@@ -1,0 +1,15 @@
+themes {
+  monokai-octagon {
+    fg 248 248 242
+    bg 40 42 54
+    black 40 42 54
+    red 255 97 136
+    green 171 225 87
+    yellow 255 216 102
+    blue 105 212 245
+    magenta 198 120 221
+    cyan 138 255 245
+    white 248 248 242
+    orange 255 180 84
+  }
+}
