@@ -1,0 +1,6 @@
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusUntracked", { fg = "#727072" })
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusModified", { fg = "#A9DC76" })
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusAdded", { fg = "#FFD866" })
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusDeleted", { fg = "#FF6188" })
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusRenamed", { fg = "#78DCE8" })
+vim.api.nvim_set_hl(0, "SnacksPickerGitStatusStaged", { fg = "#A9DC76" })
