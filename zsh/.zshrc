@@ -60,15 +60,10 @@ plugins=(
   command-not-found
 )
 
-# Custom configurations
-#
-# NVM
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
-
-# Docker
-export PATH="$PATH:/Applications/Docker.app/Contents/Resources/bin/"
+# Load zsh modular config files
+for config in ~/.config/zsh/*.zsh; do
+  [ -r "$config" ] && source "$config"
+done
 
 source $ZSH/oh-my-zsh.sh
 
