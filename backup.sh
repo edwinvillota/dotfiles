@@ -49,6 +49,7 @@ done
 # Copy configuration files
 config_files=(
   "file:$HOME/.zshrc:./zsh/"
+  "folder:$HOME/.config/zsh:./zsh/"
   "folder:$HOME/.config/nvim:./"
   "file:$HOME/.p10k.zsh:./powerlevel10k/"
   "folder:$HOME/.config/zellij:./"
