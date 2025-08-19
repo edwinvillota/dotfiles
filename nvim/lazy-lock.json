@@ -29,6 +29,7 @@
   "mini.surround": { "branch": "main", "commit": "f59022c2c66c1cffd3cd755b105faa468b25a4e0" },
   "monokai-pro.nvim": { "branch": "master", "commit": "31bad737610ec211de086d373c73025f39de93cb" },
   "neotest": { "branch": "master", "commit": "3c81345c28cd639fcc02843ed3653be462f47024" },
+  "neotest-jest": { "branch": "main", "commit": "46ccc50273838f0b48e3c4814c1c46c0ccfe9edf" },
   "neotest-vitest": { "branch": "main", "commit": "a6099e1fb55a2c2851da3dd0f4d510af9a234c92" },
   "noice.nvim": { "branch": "main", "commit": "0427460c2d7f673ad60eb02b35f5e9926cf67c59" },
   "nui.nvim": { "branch": "main", "commit": "de740991c12411b663994b2860f1a4fd0937c130" },
