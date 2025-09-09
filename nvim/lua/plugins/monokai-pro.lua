@@ -21,6 +21,6 @@ return {
       inc_search = "background", -- or "none"
       background_clear = {},
     })
-    vim.cmd("colorscheme monokai-pro")
+    -- vim.cmd("colorscheme monokai-pro")
   end,
 }
