@@ -52,10 +52,39 @@ config.color_schemes = {
 			"#FCFCFA", -- bright white
 		},
 	},
+	["Ayu dark"] = {
+		foreground = "#e6e1cf",
+		background = "#0f1419",
+		cursor_bg = "#e6e1cf",
+		cursor_fg = "#0f1419",
+		cursor_border = "#e6e1cf",
+		selection_fg = "#e6e1cf",
+		selection_bg = "#253340",
+		ansi = {
+			"#000000", -- black
+			"#ff3333", -- red
+			"#b8cc52", -- green
+			"#e6c446", -- yellow
+			"#36a3d9", -- blue
+			"#f07078", -- magenta
+			"#95e6cb", -- cyan
+			"#bfbdb6", -- white
+		},
+		brights = {
+			"#4c4f69", -- bright black
+			"#ff3333", -- bright red
+			"#b8cc52", -- bright green
+			"#e6c446", -- bright yellow
+			"#36a3d9", -- bright blue
+			"#f07078", -- bright magenta
+			"#95e6cb", -- bright cyan
+			"#e6e1cf", -- bright white
+		},
+	},
 }
 
 -- Color scheme
-config.color_scheme = "Monokai Octagon"
+config.color_scheme = "Ayu dark"
 
 -- Background with transparency
 config.window_background_opacity = 1

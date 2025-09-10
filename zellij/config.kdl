@@ -368,7 +368,7 @@ themes {
     }
 }
 
-theme "monokai-octagon"
+theme "ayu-dark"
 
 // Choose the base input mode of zellij.
 // Default: normal

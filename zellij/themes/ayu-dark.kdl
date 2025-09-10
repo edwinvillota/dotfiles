@@ -1,0 +1,15 @@
+themes {
+  ayu-dark {
+    fg 153 169 191
+    bg 30 34 42
+    black 30 34 42
+    red 255 51 102
+    green 86 182 194
+    yellow 255 203 107
+    blue 97 175 239
+    magenta 199 146 234
+    cyan 137 221 255
+    white 153 169 191
+    orange 255 167 38
+  }
+}
