@@ -153,7 +153,7 @@ func (u *Unit) IsIgnored(rel string) bool { return Match(u.Ignore, rel) }
 func (m *Manifest) IsIgnored(u *Unit, rel string) bool {
 	return Match(m.Global.Ignore, rel) || u.IsIgnored(rel)
 }
-func (u *Unit) IsSecret(rel string) bool  { return Match(u.Secret, rel) }
+func (u *Unit) IsSecret(rel string) bool { return Match(u.Secret, rel) }
 
 // GranuleOf returns the granular key ("unit/rel") if rel matches a granular
 // glob, else "" (meaning the file belongs to the unit as a whole).
