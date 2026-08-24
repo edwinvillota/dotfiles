@@ -93,15 +93,20 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 ## Known issues
 
 - **Endless screen blinking in zellij after opening a pane** (`Ctrl+g p n`),
-  persisting even after the pane is closed: caused by a bad `zjstatus.wasm`
-  build (the one installed 2026-08-22), which fights zellij over resizes on
-  every pane-count change — see
-  [dj95/zjstatus#174](https://github.com/dj95/zjstatus/issues/174). It is not
-  a wezterm problem (upgrading wezterm only changes the flicker speed).
-  Fix: restore a known-good plugin (April 2025 build works), clear the plugin
-  cache (`~/Library/Caches/org.Zellij-Contributors.Zellij` on macOS,
-  `~/.cache/zellij` on Linux), and restart all zellij sessions. If it recurs,
-  set `hide_frame_for_single_pane "false"` in `zellij/layouts/default.kdl`.
+  persisting even after the pane is closed: triggered by upgrading zellij to
+  0.45.x — the current zjstatus (v0.24.0) fights zellij 0.45 over resizes on
+  every pane-count change (see
+  [dj95/zjstatus#174](https://github.com/dj95/zjstatus/issues/174)), while the
+  older April 2025 zjstatus errors outright on 0.45. It is not a wezterm
+  problem (upgrading wezterm only changes the flicker speed). Known-good
+  combo: **zellij 0.42.2 + zjstatus April 2025 build** (what the repo
+  carries). Note the repo syncs `zellij/plugins/zjstatus.wasm` to the live
+  config, so fix the plugin in the repo, not just live. After changing binary
+  or plugin: clear the plugin cache
+  (`~/Library/Caches/org.Zellij-Contributors.Zellij` on macOS,
+  `~/.cache/zellij` on Linux) and kill all zellij servers
+  (`pkill -f "zellij --server"`). Also check *which* zellij runs — wezterm
+  prefers `~/.cargo/bin/zellij` over Homebrew's.
 
 ## TUI keys
 
