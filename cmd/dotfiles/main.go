@@ -2,11 +2,16 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/edwinvillota/dotfiles/internal/apply"
+	"github.com/edwinvillota/dotfiles/internal/check"
+	"github.com/edwinvillota/dotfiles/internal/ledger"
 	"github.com/edwinvillota/dotfiles/internal/manifest"
 	"github.com/edwinvillota/dotfiles/internal/plan"
 )
@@ -19,8 +24,13 @@ func usage() {
 Usage:
   dotfiles backup   [--dry-run] [--profile P] [--unit U ...]   live -> repo
   dotfiles install  [--dry-run] [--profile P] [--unit U ...] [--symlink] [--prune] repo -> live
+  dotfiles uninstall [--dry-run] [--unit U ...] [--no-restore]  undo install, restore originals
+  dotfiles check    [--quiet]                                   refuse secrets in the repo
+  dotfiles hook                                                  install pre-commit hook
   dotfiles diff     [--unit U ...]                              show differences
   dotfiles version
+
+  --yes / -y        skip confirmation prompts (deletions)
 
 Global flags:
   --manifest PATH   dotfiles.toml (default: auto-detect from cwd or $DOTFILES)
@@ -35,6 +45,9 @@ type common struct {
 	units   multi
 	symlink bool
 	prune   bool
+	yes     bool
+	quiet   bool
+	noRest  bool
 }
 
 type multi []string
@@ -64,6 +77,10 @@ func main() {
 	fs.Var(&c.units, "unit", "")
 	fs.BoolVar(&c.symlink, "symlink", false, "")
 	fs.BoolVar(&c.prune, "prune", false, "")
+	fs.BoolVar(&c.yes, "yes", false, "")
+	fs.BoolVar(&c.yes, "y", false, "")
+	fs.BoolVar(&c.quiet, "quiet", false, "")
+	fs.BoolVar(&c.noRest, "no-restore", false, "")
 	fs.Parse(args)
 
 	if home == "" {
@@ -83,6 +100,15 @@ func main() {
 		err = c.run(plan.Backup)
 	case "install":
 		err = c.run(plan.Install)
+	case "uninstall":
+		err = c.uninstall()
+	case "check":
+		err = c.check()
+	case "hook":
+		var h string
+		if h, err = check.InstallHook(c.m.Root); err == nil {
+			fmt.Println("installed", h)
+		}
 	case "diff":
 		err = c.diff()
 	default:
@@ -103,9 +129,6 @@ func findManifest(explicit string) (string, error) {
 	if explicit != "" {
 		return explicit, nil
 	}
-	if d := os.Getenv("DOTFILES"); d != "" {
-		return filepath.Join(d, "dotfiles.toml"), nil
-	}
 	dir, _ := os.Getwd()
 	for {
 		p := filepath.Join(dir, "dotfiles.toml")
@@ -117,6 +140,9 @@ func findManifest(explicit string) (string, error) {
 			break
 		}
 		dir = parent
+	}
+	if d := os.Getenv("DOTFILES"); d != "" {
+		return filepath.Join(d, "dotfiles.toml"), nil
 	}
 	return "", fmt.Errorf("dotfiles.toml not found (set $DOTFILES or --manifest)")
 }
@@ -150,7 +176,96 @@ func (c *common) run(dir plan.Direction) error {
 		fmt.Println("\n(dry run — nothing written)")
 		return nil
 	}
-	return fmt.Errorf("applying plans is not implemented yet; use --dry-run")
+	if len(p.Changes()) == 0 {
+		fmt.Println("\nnothing to do")
+		return nil
+	}
+	if dir == plan.Backup {
+		if fs, _ := check.Run(c.m, nil); len(fs) > 0 {
+			// pre-existing problems must be fixed before adding more files
+			fmt.Fprintln(os.Stderr, "\nrefusing to back up: repo already contains secret-looking content:")
+			for _, f := range fs {
+				fmt.Fprintln(os.Stderr, "  ", f)
+			}
+			return fmt.Errorf("run `dotfiles check` and fix the findings first")
+		}
+	}
+	fmt.Println()
+	res, err := apply.Run(c.m, p, apply.Options{Confirm: c.confirm, Log: os.Stdout})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\ndone: %d written, %d linked, %d deleted\n", res.Written, res.Linked, res.Deleted)
+	for _, n := range res.Notices {
+		fmt.Println("NOTE:", n)
+	}
+	if dir == plan.Install {
+		fmt.Println("ledger:", filepath.Join(ledger.Dir(c.m.Home), "ledger.json"))
+	}
+	if dir == plan.Backup {
+		if fs, _ := check.Run(c.m, nil); len(fs) > 0 {
+			fmt.Fprintln(os.Stderr, "\nWARNING: the backup introduced secret-looking content — do NOT commit until fixed:")
+			for _, f := range fs {
+				fmt.Fprintln(os.Stderr, "  ", f)
+			}
+			return fmt.Errorf("secret check failed")
+		}
+	}
+	return nil
+}
+
+func (c *common) confirm(msg string) bool {
+	if c.yes {
+		return true
+	}
+	fmt.Printf("%s. Continue? [y/N] ", msg)
+	r := bufio.NewReader(os.Stdin)
+	l, _ := r.ReadString('\n')
+	l = strings.ToLower(strings.TrimSpace(l))
+	return l == "y" || l == "yes"
+}
+
+func (c *common) uninstall() error {
+	var units map[string]bool
+	if len(c.units) > 0 {
+		units = map[string]bool{}
+		for _, u := range c.units {
+			units[u] = true
+		}
+	}
+	res, err := apply.Uninstall(c.m, units, !c.noRest, c.dryRun, os.Stdout)
+	if err != nil {
+		return err
+	}
+	if c.dryRun {
+		fmt.Println("\n(dry run — nothing changed)")
+		return nil
+	}
+	fmt.Printf("\ndone: %d removed, %d restored\n", res.Deleted, res.Written)
+	for _, n := range res.Notices {
+		fmt.Println("NOTE:", n)
+	}
+	return nil
+}
+
+func (c *common) check() error {
+	fs, err := check.Run(c.m, nil)
+	if err != nil {
+		return err
+	}
+	if len(fs) == 0 {
+		if !c.quiet {
+			fmt.Println("ok: no secrets found in committed/unignored files")
+		}
+		return nil
+	}
+	fmt.Fprintln(os.Stderr, "secret check FAILED:")
+	for _, f := range fs {
+		fmt.Fprintln(os.Stderr, "  ", f)
+	}
+	fmt.Fprintln(os.Stderr, "\nmark a line `# public` if the value is safe, or add the file to `secret` in dotfiles.toml")
+	os.Exit(1)
+	return nil
 }
 
 func printPlan(p *plan.Plan) {
