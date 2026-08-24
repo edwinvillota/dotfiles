@@ -4,7 +4,8 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
       zsh git sudo curl ca-certificates python3 \
       xvfb x11vnc novnc websockify openbox dbus-x11 \
-      fontconfig \
+      libegl1 libgl1 libgl1-mesa-dri libglx-mesa0 \
+      fontconfig xz-utils \
  && rm -rf /var/lib/apt/lists/* \
  && useradd -m -s /bin/zsh tester \
  && echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
@@ -12,7 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN mkdir -p /usr/local/share/fonts/meslo && cd /usr/local/share/fonts/meslo \
  && for v in Regular Bold Italic "Bold%20Italic"; do \
       curl -fsSL "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20$v.ttf" -o "MesloLGS NF $v.ttf"; \
-    done && fc-cache -f
+    done \
+ && mkdir -p /usr/local/share/fonts/iosevka && cd /usr/local/share/fonts/iosevka \
+ && curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/IosevkaTerm.tar.xz" | tar -xJ \
+ && fc-cache -f
 COPY --chown=tester:tester . /home/tester/dotfiles
 ARG TARGETARCH=arm64
 COPY --chown=tester:tester dist/dotfiles-linux-${TARGETARCH} /usr/local/bin/dotfiles
