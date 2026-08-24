@@ -1,6 +1,7 @@
 package deps
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -23,6 +24,7 @@ func TestResolveLinuxApt(t *testing.T) {
 	m := load(t)
 	p := Platform{OS: "linux", Arch: "amd64", Distro: "ubuntu", Apt: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
 	t.Setenv("PATH", t.TempDir()) // nothing installed
+	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
 	for _, it := range Resolve(m, p, append(m.Deps.Core, m.Deps.Extra...)) {
 		got[it.Name] = it
@@ -66,6 +68,7 @@ func TestResolveDarwin(t *testing.T) {
 	fake := t.TempDir()
 	p := Platform{OS: "darwin", Arch: "arm64", BrewDir: fake, Brew: fake + "/bin/brew"}
 	t.Setenv("PATH", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
 	for _, it := range Resolve(m, p, []string{"gdu", "wezterm", "fd", "colima"}) {
 		got[it.Name] = it
@@ -112,6 +115,7 @@ func TestResolveArchPacman(t *testing.T) {
 	m := load(t)
 	t.Setenv("PATH", t.TempDir())
 	p := Platform{OS: "linux", Arch: "amd64", Distro: "arch", Pacman: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
 	for _, it := range Resolve(m, p, append(m.Deps.Core, m.Deps.Extra...)) {
 		got[it.Name] = it
@@ -135,5 +139,42 @@ func TestResolveArchPacman(t *testing.T) {
 		if got[n].Status != NeedsBrew {
 			t.Errorf("%s on arch should need Homebrew, got %s", n, got[n].Status)
 		}
+	}
+}
+
+func TestResolveNodeViaNvm(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	p := Platform{OS: "linux", Arch: "arm64", Distro: "ubuntu", Apt: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	got := map[string]Item{}
+	for _, it := range Resolve(m, p, []string{"nvm", "node"}) {
+		got[it.Name] = it
+	}
+	if got["nvm"].Status != Missing || got["nvm"].Manager != "git" {
+		t.Errorf("nvm should git-clone: %+v", got["nvm"])
+	}
+	n := got["node"]
+	if n.Status != Missing || !strings.Contains(n.Cmd[2], "nvm install 24") {
+		t.Errorf("node should install via nvm: %+v", n)
+	}
+	// fake an nvm-provided node >= 22
+	bin := filepath.Join(home, ".nvm")
+	os.MkdirAll(bin, 0o755)
+	os.WriteFile(filepath.Join(bin, "nvm.sh"), []byte("node(){ echo v24.13.0; }\n"), 0o755)
+	for _, it := range Resolve(m, p, []string{"node"}) {
+		n = it
+	}
+	if n.Status != Present || !strings.Contains(n.Found, "24.13") {
+		t.Errorf("nvm node should be detected: %+v", n)
+	}
+	// and an outdated one
+	os.WriteFile(filepath.Join(bin, "nvm.sh"), []byte("node(){ echo v18.1.0; }\n"), 0o755)
+	for _, it := range Resolve(m, p, []string{"node"}) {
+		n = it
+	}
+	if n.Status != Outdated {
+		t.Errorf("node 18 should be outdated: %+v", n)
 	}
 }

@@ -140,7 +140,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "zsh", "nvim", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
+core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -153,12 +153,19 @@ pacman = "neovim"
 min = "0.12"
 apt = { skip = true, note = "apt ships < 0.12; installed via Homebrew" }
 
+[deps.pkg.nvm]
+kind = "git"
+url = "https://github.com/nvm-sh/nvm.git"
+dest = "~/.nvm"
+needs = ["git"]
+
+# node comes from nvm (matching zsh/config/nvm.zsh), never a fixed system node.
+# copilot.lua needs >= 22; nvm installs 24.
 [deps.pkg.node]
-# copilot.lua needs Node >= 22. On macOS nvm usually provides it already
-# (presence check passes); elsewhere brew installs current node.
 min = "22"
-apt = { skip = true, note = "apt ships Node 18; installed via Homebrew" }
-pacman = "nodejs"
+needs = ["nvm", "curl"]
+check = 'export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1; node --version'
+run = 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" >/dev/null 2>&1; nvm install 24'
 
 [deps.pkg.oh-my-zsh]
 kind = "git"

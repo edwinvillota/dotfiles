@@ -98,6 +98,25 @@ func resolveOne(m *manifest.Manifest, p Platform, name string) Item {
 		return it
 	}
 
+	if spec.Check != "" {
+		it.Manager, it.Pkg = "script", "shell install"
+		out, err := exec.Command("/bin/bash", "-c", spec.Check).Output()
+		v := ""
+		if m := verRe.FindStringSubmatch(strings.SplitN(string(out), "\n", 2)[0]); m != nil {
+			v = strings.TrimPrefix(m[0], "v")
+		}
+		switch {
+		case err == nil && (spec.Min == "" || (v != "" && !less(v, spec.Min))):
+			it.Status, it.Found = Present, strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+			return it
+		case err == nil:
+			it.Status, it.Note = Outdated, "have "+v+", need >= "+spec.Min
+		default:
+			it.Status = Missing
+		}
+		it.Cmd = []string{"/bin/bash", "-c", spec.Run}
+		return it
+	}
 	if path := lookup(it.Bin, p); path != "" {
 		it.Found = path
 		if spec.Min != "" {

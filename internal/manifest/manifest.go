@@ -138,12 +138,17 @@ type PkgSpec struct {
 	Name   string `toml:"name"`
 	// Deb: per-arch URLs of an official .deb, for apt systems where no
 	// repo package exists (wezterm, ghostty, ...). Keys: amd64, arm64.
-	Deb           map[string]string `toml:"deb"`
-	Needs         []string          `toml:"needs"`
-	OS            []string          `toml:"os"`
-	Note          string            `toml:"note"`
-	AptPrereqs    []string          `toml:"apt_prereqs"`
-	PacmanPrereqs []string          `toml:"pacman_prereqs"`
+	Deb map[string]string `toml:"deb"`
+	// Check: shell probe for presence — present when it exits 0; stdout is
+	// parsed for the version when `min` is set. Overrides the bin lookup.
+	Check string `toml:"check"`
+	// Run: shell command that installs the package (used with Check).
+	Run           string   `toml:"run"`
+	Needs         []string `toml:"needs"`
+	OS            []string `toml:"os"`
+	Note          string   `toml:"note"`
+	AptPrereqs    []string `toml:"apt_prereqs"`
+	PacmanPrereqs []string `toml:"pacman_prereqs"`
 }
 
 type Deps struct {

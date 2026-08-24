@@ -108,7 +108,9 @@ check 'echo "$out" | grep -q "nothing installed"' "dry-run installed nothing"
 
 step "deps: real apt install of a small subset"
 if [ -n "${E2E_NET:-}" ]; then
-  dotfiles deps --only ripgrep --only fd --only oh-my-zsh 2>&1 | tail -3
+  dotfiles deps --only ripgrep --only fd --only oh-my-zsh --only curl --only nvm --only node 2>&1 | tail -3
+  check '[ -s "$HOME/.nvm/nvm.sh" ]' "nvm cloned to ~/.nvm"
+  check 'bash -c ". $HOME/.nvm/nvm.sh >/dev/null 2>&1; node --version | grep -Eq \"^v(2[2-9]|[3-9][0-9])\""' "node >= 22 installed via nvm"
   check 'command -v rg' "ripgrep installed via apt"
   check 'command -v fdfind' "fd-find installed via apt"
   check '[ -d "$HOME/.oh-my-zsh" ]' "oh-my-zsh cloned"
