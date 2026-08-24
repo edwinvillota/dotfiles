@@ -1,0 +1,96 @@
+# Tokyo Night (https://terminalcolors.com/themes/tokyo-night/default/) — generated from themes/tokyo-night/palette.toml, do not edit by hand
+#
+# app.overall.bg is REQUIRED, not cosmetic: yazi's image_erase() paints spaces
+# in this colour to clear an image before drawing a modal over it. Leaving it
+# unset (the upstream default) makes previews bleed through dialogs.
+
+[app]
+overall = { bg = "#1a1b26" }
+
+[mgr]
+cwd = "#7aa2f7"
+
+hovered = { bg = "#283457", bold = true }
+
+find_keyword  = { fg = "#e0af68", bold = true }
+find_position = { fg = "#bb9af7", bold = true }
+
+marker_copied   = { fg = "#9ece6a", bg = "#9ece6a" }
+marker_cut      = { fg = "#f7768e", bg = "#f7768e" }
+marker_marked   = { fg = "#7aa2f7", bg = "#7aa2f7" }
+marker_selected = { fg = "#e0af68", bg = "#e0af68" }
+
+count_copied   = { fg = "#1a1b26", bg = "#9ece6a" }
+count_cut      = { fg = "#1a1b26", bg = "#f7768e" }
+count_selected = { fg = "#1a1b26", bg = "#e0af68" }
+
+border_symbol = "│"
+border_style  = { fg = "#2e303f" }
+
+[status]
+overall = { bg = "#1a1b26" }
+
+perm_sep   = { fg = "#414868" }
+perm_type  = { fg = "#9ece6a" }
+perm_read  = { fg = "#e0af68" }
+perm_write = { fg = "#f7768e" }
+perm_exec  = { fg = "#7dcfff" }
+
+[input]
+border   = { fg = "#7aa2f7" }
+title    = {}
+value    = {}
+selected = { bg = "#283457" }
+
+[pick]
+border   = { fg = "#7aa2f7" }
+active   = { fg = "#e0af68", bold = true }
+inactive = {}
+
+[which]
+mask            = { bg = "#242632" }
+cand            = { fg = "#7dcfff" }
+rest            = { fg = "#414868" }
+desc            = { fg = "#bb9af7" }
+separator       = "  "
+separator_style = { fg = "#2e303f" }
+
+[tasks]
+border  = { fg = "#7aa2f7" }
+title   = {}
+hovered = { fg = "#e0af68", underline = true }
+
+[notify]
+title_info  = { fg = "#7dcfff" }
+title_warn  = { fg = "#e0af68" }
+title_error = { fg = "#f7768e" }
+
+[confirm]
+border  = { fg = "#7aa2f7", bg = "#1a1b26" }
+title   = { fg = "#7aa2f7", bg = "#1a1b26" }
+body    = { bg = "#1a1b26" }
+list    = { fg = "#7dcfff", bg = "#1a1b26" }
+
+[filetype]
+rules = [
+  # Media
+  { mime = "**/image/*", fg = "#bb9af7" },
+  { mime = "**/{audio,video}/*", fg = "#e0af68" },
+  # Archives / packages
+  { mime = "**/application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#e0af68" },
+  { url = "*.{apk,ipa,dmg,pkg}", fg = "#e0af68" },
+  # Documents
+  { mime = "**/application/{pdf,doc,rtf}", fg = "#f7768e" },
+  { url = "*.{md,txt,rst}", fg = "#c0caf5" },
+  # Code / config
+  { url = "*.{js,ts,tsx,jsx,lua,py,go,rs,rb,sh,zsh}", fg = "#9ece6a" },
+  { url = "*.{json,yaml,yml,toml,kdl,ini,conf}", fg = "#7dcfff" },
+  # Virtual file system
+  { mime = "vfs/{absent,stale}", fg = "#414868" },
+  # Special
+  { url = "*", is = "orphan", fg = "#f7768e" },
+  { url = "*", is = "exec", fg = "#9ece6a" },
+  # Fallback
+  { url = "*/", fg = "#7aa2f7" },
+  { url = "*", fg = "#c0caf5" }
+]

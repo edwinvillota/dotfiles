@@ -1,0 +1,47 @@
+# Ayu Dark — palette fetched verbatim from terminalcolors.com
+# (https://terminalcolors.com/themes/ayu/dark/, Alacritty export)
+
+name = "ayu-dark"
+label = "Ayu Dark"
+source = "https://terminalcolors.com/themes/ayu/dark/"
+# nvim colorscheme; the plugin providing it is declared in nvim/lua/plugins/colorscheme.lua
+nvim = "ayu-dark"
+[primary]
+foreground = "#bfbdb6"
+background = "#0b0e14"
+
+[cursor]
+text = "#0b0e14"
+cursor = "#bfbdb6"
+
+[selection]
+text = "#bfbdb6"
+background = "#1b3a5b"
+
+[normal]
+black = "#1e232b"
+red = "#ea6c73"
+green = "#7fd962"
+yellow = "#f9af4f"
+blue = "#53bdfa"
+magenta = "#cda1fa"
+cyan = "#90e1c6"
+white = "#c7c7c7"
+
+[bright]
+black = "#686868"
+red = "#f07178"
+green = "#aad94c"
+yellow = "#ffb454"
+blue = "#59c2ff"
+magenta = "#d2a6ff"
+cyan = "#95e6cb"
+white = "#ffffff"
+
+# Role overrides keep the tool's TUI and zjstatus identical to the
+# hand-tuned Ayu values used before the theme system existed.
+[roles]
+accent = "#e6b450"
+panel = "#0d1017"
+line = "#1f2430"
+sel = "#131721"

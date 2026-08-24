@@ -69,6 +69,42 @@ check '[ -L "$H/.config/wezterm/wezterm.lua" ]' "wezterm.lua is a symlink"
 dotfiles uninstall >/dev/null
 check '[ ! -e "$H/.config/wezterm" ]' "symlinks removed"
 
+step "theme switching (nord ⇄ tokyo-night)"
+dotfiles install --yes --profile personal >/dev/null
+out=$(dotfiles theme)
+check 'echo "$out" | grep -q "● ayu-dark"' "default theme listed as active"
+dotfiles theme nord >/dev/null
+check 'grep -q "theme = \"nord\"" "$H/.config/dotfiles/state.toml"' "active theme saved to state.toml"
+check 'grep -q "theme \"nord\"" "$H/.config/zellij/config.kdl"' "zellij config switched"
+check '[ -f "$H/.config/zellij/themes/nord.kdl" ]' "zellij nord theme file installed"
+check 'grep -q "theme: nord" "$H/.config/zellij/layouts/default.kdl"' "zjstatus layout re-rendered"
+check 'grep -q "#2e3440" "$H/.config/wezterm/theme.lua"' "wezterm theme.lua has the nord palette"
+check 'grep -q "\"nord\"" "$H/.config/nvim/lua/config/theme-active.lua"' "nvim colorscheme switched"
+check 'grep -q "BAT_THEME" "$H/.config/zsh/00-theme.zsh" && grep -q "#2e3440" "$H/.config/zsh/00-theme.zsh"' "fzf/bat env written from palette"
+check 'zsh -n "$H/.config/zsh/00-theme.zsh"' "00-theme.zsh parses"
+check 'grep -q "color_theme = \"nord\"" "$H/.config/btop/btop.conf"' "btop switched"
+check '[ -f "$H/.config/btop/themes/nord.theme" ]' "btop nord theme installed"
+check 'grep -q "dark = \"nord\"" "$H/.config/yazi/theme.toml"' "yazi flavor switched"
+check '[ -f "$H/.config/yazi/flavors/nord.yazi/flavor.toml" ]' "yazi nord flavor installed"
+check 'grep -q "#2e3440" "$H/.config/gh-dash/config.yml"' "gh-dash colors switched"
+out=$(dotfiles theme nord)
+check 'echo "$out" | grep -q "0 file(s) written"' "re-applying the same theme is a no-op"
+themed_files="$H/.config/wezterm/theme.lua $H/.config/zellij/config.kdl $H/.config/zellij/layouts/default.kdl $H/.config/zsh/00-theme.zsh $H/.config/gh-dash/config.yml"
+snap=$(cat $themed_files | md5sum)
+dotfiles theme tokyo-night >/dev/null
+check 'grep -q "theme \"tokyo-night\"" "$H/.config/zellij/config.kdl"' "switch to tokyo-night"
+check '[ "$snap" != "$(cat $themed_files | md5sum)" ]' "tokyo-night actually changed the files"
+dotfiles theme nord >/dev/null
+check '[ "$snap" = "$(cat $themed_files | md5sum)" ]' "nord→tokyo-night→nord round-trips byte-identically"
+dotfiles install --yes --profile personal >/dev/null
+check 'grep -q "theme \"nord\"" "$H/.config/zellij/config.kdl"' "re-install keeps the active theme (post-install hook)"
+S2=$(mktemp -d); cp -a "$DOTFILES/." "$S2/"
+( cd "$S2" && dotfiles backup --yes --unit zellij >/dev/null 2>&1 )
+check 'grep -q "theme \"ayu-dark\"" "$S2/zellij/config.kdl"' "backup normalizes the repo back to the default theme"
+dotfiles uninstall >/dev/null
+rm -rf "$H/.config/dotfiles"
+check 'diff -r "$ORIG/.config" "$H/.config" >/dev/null' "uninstall after theming restores .config byte-for-byte"
+
 step "backup from live into a scratch checkout"
 SCRATCH=$(mktemp -d); cp -a "$DOTFILES/." "$SCRATCH/"
 printf '# secrets\nexport NVIM_DB_T=postgres://u:hunter2@h/d\nexport HOST=h # public\n' > "$H/.config/zsh/databases.zsh"
@@ -83,11 +119,13 @@ check 'grep -q "export HOST=h # public" "$SCRATCH/zsh/config/databases.zsh.templ
 echo 'export API_KEY=sk-live-123' > "$SCRATCH/zsh/config/oops.zsh"
 ( cd "$SCRATCH" && ! dotfiles check >/dev/null 2>&1 ); check '[ $? = 0 ]' "check FAILS on leaked secret"
 
-step "setup wizard (scripted answers: profile=personal, skip tools, apply configs)"
+step "setup wizard (scripted answers: profile=personal, theme=default, skip tools, apply configs)"
 rm -rf "$H/.config/dotfiles"
-out=$(printf 'personal\nn\ny\n' | dotfiles setup 2>&1)
+out=$(printf 'personal\n\nn\ny\n' | dotfiles setup 2>&1)
 check 'echo "$out" | grep -q "step 1 · profile"' "wizard runs step 1"
+check 'echo "$out" | grep -q "step 2 · theme"' "wizard asks for a theme"
 check 'grep -q "personal" "$H/.config/dotfiles/state.toml"' "profile persisted"
+check 'grep -q "theme = \"ayu-dark\"" "$H/.config/dotfiles/state.toml"' "default theme persisted"
 check 'echo "$out" | grep -q "skipped — run .dotfiles deps"' "tool install can be declined"
 check '[ -f "$H/.config/nvim/init.lua" ]' "configs applied from wizard"
 check 'echo "$out" | grep -q "dotfiles uninstall"' "wizard explains rollback"

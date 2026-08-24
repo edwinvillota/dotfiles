@@ -11,19 +11,49 @@ import (
 
 	"github.com/edwinvillota/dotfiles/internal/ledger"
 	"github.com/edwinvillota/dotfiles/internal/manifest"
+	"github.com/edwinvillota/dotfiles/internal/state"
+	"github.com/edwinvillota/dotfiles/internal/theme"
 )
 
 // postInstall runs unit-specific fixups after files are in place.
 // Currently: seed zellij's plugin-permission grants, because status-bar
 // plugins (zjstatus) can never take focus, so their y/n permission prompt
-// is unanswerable on a fresh machine.
+// is unanswerable on a fresh machine; and re-apply the machine's active
+// theme, because installing a themed unit copies the repo's default-themed
+// files over the live, theme-switched ones.
 func postInstall(m *manifest.Manifest, unitsTouched map[string]bool, led *ledger.Ledger, log io.Writer) error {
 	if unitsTouched["zellij"] {
 		if err := seedZellijPermissions(m, led, log); err != nil {
 			return fmt.Errorf("zellij permissions: %w", err)
 		}
 	}
+	themed := false
+	for _, u := range theme.Units {
+		if unitsTouched[u] {
+			themed = true
+			break
+		}
+	}
+	if themed {
+		st, err := state.Load(m.Home)
+		if err != nil {
+			return fmt.Errorf("theme re-apply: %w", err)
+		}
+		active := st.Theme
+		if active == "" {
+			active = theme.Default
+		}
+		if _, err := theme.Apply(m, active, led, log); err != nil {
+			return fmt.Errorf("theme re-apply (%s): %w", active, err)
+		}
+	}
 	return nil
+}
+
+// postBackup keeps a machine's theme choice out of the repo: the theme-
+// selecting lines in just-backed-up configs are reset to theme.Default.
+func postBackup(m *manifest.Manifest) error {
+	return theme.NormalizeRepo(m.Root)
 }
 
 // ZellijPermissionsPath is where zellij caches granted plugin permissions.

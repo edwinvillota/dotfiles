@@ -37,9 +37,18 @@ func TestSetupWizardFlow(t *testing.T) {
 	if s.step != 1 || !strings.Contains(stripANSI(s.View()), "Which machine") {
 		t.Fatal("profile step")
 	}
-	pressS("enter") // -> features
+	pressS("enter") // -> theme
 	v = stripANSI(s.View())
-	if s.step != 2 || !strings.Contains(v, "[x] nvim") || !strings.Contains(v, "configs") {
+	if s.step != 2 || !strings.Contains(v, "Pick a theme") || !strings.Contains(v, "Nord") {
+		t.Fatalf("theme step:\n%s", v)
+	}
+	pressS("j", "j", "enter") // pick a non-default theme -> features
+	picked := s.themes[s.themeIdx]
+	if picked == "ayu-dark" {
+		t.Fatal("j/j should have moved off the default theme")
+	}
+	v = stripANSI(s.View())
+	if s.step != 3 || !strings.Contains(v, "[x] nvim") || !strings.Contains(v, "configs") {
 		t.Fatalf("features step:\n%s", v)
 	}
 	if !strings.Contains(v, "ghostty") || !strings.Contains(v, "coming soon") {
@@ -68,17 +77,20 @@ func TestSetupWizardFlow(t *testing.T) {
 	pressS(" ")     // back on
 	pressS("enter") // -> review (single confirmation)
 	v = stripANSI(s.View())
-	if s.step != 3 || !strings.Contains(v, "Review") || !strings.Contains(v, "create") {
+	if s.step != 4 || !strings.Contains(v, "Review") || !strings.Contains(v, "create") {
 		t.Fatalf("review step:\n%s", v)
 	}
 	// single confirm runs everything
 	_, cmd := s.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if s.step != 4 || cmd == nil {
+	if s.step != 5 || cmd == nil {
 		t.Fatal("enter on review should run")
 	}
 	s.Update(cmd())
-	if s.step != 5 || s.err != nil {
+	if s.step != 6 || s.err != nil {
 		t.Fatalf("done step, err=%v log=%s", s.err, s.log)
+	}
+	if st.Theme != picked {
+		t.Fatalf("state theme = %q, want %q", st.Theme, picked)
 	}
 	if b, _ := os.ReadFile(filepath.Join(m.Home, ".config/nvim/init.lua")); string(b) != "repo" {
 		t.Fatal("configs not applied")

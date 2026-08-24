@@ -84,6 +84,11 @@ func Run(m *manifest.Manifest, p *plan.Plan, o Options) (*Result, error) {
 			res.Notices = append(res.Notices, "post-install: "+err.Error())
 		}
 	}
+	if p.Direction == plan.Backup {
+		if err := postBackup(m); err != nil {
+			res.Notices = append(res.Notices, "post-backup: "+err.Error())
+		}
+	}
 	if led != nil {
 		if err := led.Save(); err != nil {
 			return res, err

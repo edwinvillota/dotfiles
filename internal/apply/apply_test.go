@@ -33,9 +33,11 @@ func setup(t *testing.T) *manifest.Manifest {
 [unit.nvim]
 src = "nvim"
 dest = "~/.config/nvim"
+ignore = ["lua/config/theme-active.lua"]
 [unit.zsh]
 src = "zsh/config"
 dest = "~/.config/zsh"
+ignore = ["00-theme.zsh"]
 secret = ["databases.zsh"]
 [unit.zshrc]
 src = "zsh/.zshrc"

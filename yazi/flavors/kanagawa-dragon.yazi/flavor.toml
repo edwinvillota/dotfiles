@@ -1,0 +1,96 @@
+# Kanagawa Dragon (https://terminalcolors.com/themes/kanagawa/dragon/) — generated from themes/kanagawa-dragon/palette.toml, do not edit by hand
+#
+# app.overall.bg is REQUIRED, not cosmetic: yazi's image_erase() paints spaces
+# in this colour to clear an image before drawing a modal over it. Leaving it
+# unset (the upstream default) makes previews bleed through dialogs.
+
+[app]
+overall = { bg = "#181616" }
+
+[mgr]
+cwd = "#7fb4ca"
+
+hovered = { bg = "#2d4f67", bold = true }
+
+find_keyword  = { fg = "#e6c384", bold = true }
+find_position = { fg = "#938aa9", bold = true }
+
+marker_copied   = { fg = "#87a987", bg = "#87a987" }
+marker_cut      = { fg = "#c4746e", bg = "#c4746e" }
+marker_marked   = { fg = "#7fb4ca", bg = "#7fb4ca" }
+marker_selected = { fg = "#e6c384", bg = "#e6c384" }
+
+count_copied   = { fg = "#181616", bg = "#87a987" }
+count_cut      = { fg = "#181616", bg = "#c4746e" }
+count_selected = { fg = "#181616", bg = "#e6c384" }
+
+border_symbol = "│"
+border_style  = { fg = "#2d2b2b" }
+
+[status]
+overall = { bg = "#181616" }
+
+perm_sep   = { fg = "#a6a69c" }
+perm_type  = { fg = "#87a987" }
+perm_read  = { fg = "#e6c384" }
+perm_write = { fg = "#c4746e" }
+perm_exec  = { fg = "#7aa89f" }
+
+[input]
+border   = { fg = "#7fb4ca" }
+title    = {}
+value    = {}
+selected = { bg = "#2d4f67" }
+
+[pick]
+border   = { fg = "#7fb4ca" }
+active   = { fg = "#e6c384", bold = true }
+inactive = {}
+
+[which]
+mask            = { bg = "#222121" }
+cand            = { fg = "#7aa89f" }
+rest            = { fg = "#a6a69c" }
+desc            = { fg = "#938aa9" }
+separator       = "  "
+separator_style = { fg = "#2d2b2b" }
+
+[tasks]
+border  = { fg = "#7fb4ca" }
+title   = {}
+hovered = { fg = "#e6c384", underline = true }
+
+[notify]
+title_info  = { fg = "#7aa89f" }
+title_warn  = { fg = "#c4b28a" }
+title_error = { fg = "#c4746e" }
+
+[confirm]
+border  = { fg = "#7fb4ca", bg = "#181616" }
+title   = { fg = "#7fb4ca", bg = "#181616" }
+body    = { bg = "#181616" }
+list    = { fg = "#7aa89f", bg = "#181616" }
+
+[filetype]
+rules = [
+  # Media
+  { mime = "**/image/*", fg = "#938aa9" },
+  { mime = "**/{audio,video}/*", fg = "#e6c384" },
+  # Archives / packages
+  { mime = "**/application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#c4b28a" },
+  { url = "*.{apk,ipa,dmg,pkg}", fg = "#c4b28a" },
+  # Documents
+  { mime = "**/application/{pdf,doc,rtf}", fg = "#c4746e" },
+  { url = "*.{md,txt,rst}", fg = "#c5c9c5" },
+  # Code / config
+  { url = "*.{js,ts,tsx,jsx,lua,py,go,rs,rb,sh,zsh}", fg = "#87a987" },
+  { url = "*.{json,yaml,yml,toml,kdl,ini,conf}", fg = "#7aa89f" },
+  # Virtual file system
+  { mime = "vfs/{absent,stale}", fg = "#a6a69c" },
+  # Special
+  { url = "*", is = "orphan", fg = "#c4746e" },
+  { url = "*", is = "exec", fg = "#87a987" },
+  # Fallback
+  { url = "*/", fg = "#7fb4ca" },
+  { url = "*", fg = "#c5c9c5" }
+]

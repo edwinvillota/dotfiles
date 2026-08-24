@@ -49,7 +49,7 @@ source $(dirname $BREW_BIN)/share/powerlevel10k/powerlevel10k.zsh-theme
 
 export FZF_DEFAULT_COMMAND="fd --hidden --strip-cwd-prefix --exclude .git"
 export FZF_DEFAULT_T_COMMAND="$FZF_DEFAULT_COMMAND"
-export FZF_ALT_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exlude .git"
+export FZF_ALT_COMMAND="fd --type=d --hidden --strip-cwd-prefix --exclude .git"
 
 WM_VAR="/$ZELLIJ"
 WM_CMD="zellij"
@@ -63,8 +63,10 @@ function start_if_needed() {
 }
 
 # alias
-alias fzfbat='fzf --preview="bat --theme=gruvbox-dark --color=always {}"'
-alias fzfnvim='nvim $(fzf --preview="bat --theme=gruvbox-dark --color=always {}")'
+# BAT_THEME is exported by ~/.config/zsh/00-theme.zsh (written by
+# `dotfiles theme`); ansi = follow the terminal palette on machines without it
+alias fzfbat='fzf --preview="bat --theme=${BAT_THEME:-ansi} --color=always {}"'
+alias fzfnvim='nvim $(fzf --preview="bat --theme=${BAT_THEME:-ansi} --color=always {}")'
 alias debug-chrome='/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222'
 
 #plugins

@@ -44,6 +44,7 @@ Usage:
   dotfiles hook                                                  install pre-commit hook
   dotfiles diff     [--unit U ...]                              show differences
   dotfiles profile  [NAME]                                       show or set the active profile
+  dotfiles theme    [NAME]                                       list themes or switch every tool to one
   dotfiles tui                                                   interactive mode (default)
   dotfiles version
 
@@ -163,6 +164,8 @@ func main() {
 		err = c.diff()
 	case "profile":
 		err = c.profileCmd(positional)
+	case "theme":
+		err = c.themeCmd(positional)
 	case "tui":
 		err = c.tui()
 	case "setup":

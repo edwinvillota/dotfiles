@@ -23,13 +23,23 @@ EVERYDAY COMMANDS
                             ~/.zshrc or an existing secret file; anything it
                             replaces is preserved and restorable.
   dotfiles diff             Show file-by-file differences before deciding.
+  dotfiles theme            Switch the THEME of everything at once: wezterm,
+                            zellij (+ status bar), nvim, fzf/bat, yazi, btop,
+                            gh-dash and this TUI. Opens a picker (or pass a
+                            name; 't' in the TUI does the same). The choice is
+                            per-machine state, never committed. wezterm
+                            recolors live; zellij needs a restart; nvim and
+                            the other TUIs pick it up on their next start.
+                            Not themed: powerlevel10k (own prompt config) and
+                            plain-ANSI tools — they follow the terminal
+                            palette, which the theme already switches.
 
   Add --dry-run (-n) to ANY of these to see the plan without writing.
 
 FRESH MACHINE
-  dotfiles setup            Interactive walkthrough: pick a profile, install
-                            missing tools, then install the configs. Explains
-                            each step and asks before doing anything.
+  dotfiles setup            Interactive walkthrough: pick a profile and a
+                            theme, install missing tools, then install the
+                            configs. Explains each step and asks first.
   dotfiles deps             Just the tools. Supported platforms: macOS (brew),
                             Ubuntu (apt + official .deb), Arch (pacman);
                             Linuxbrew is bootstrapped when a tool exists
