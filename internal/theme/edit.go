@@ -13,7 +13,7 @@ var (
 	zellijThemeRe = regexp.MustCompile(`(?m)^theme "[^"]*"$`)
 	yaziFlavorRe  = regexp.MustCompile(`(?m)^dark = "[^"]*"$`)
 	btopThemeRe   = regexp.MustCompile(`(?m)^color_theme = "[^"]*"$`)
-	ghDashBlockRe = regexp.MustCompile(`(?ms)^theme:\n(?:[ \t].*\n|\n)*`)
+	ghDashBlockRe = regexp.MustCompile(`(?m)^theme:\n(?:[ \t][^\n]*\n|\n)*`)
 )
 
 func SetZellijTheme(content []byte, name string) ([]byte, error) {
