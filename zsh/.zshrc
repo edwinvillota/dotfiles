@@ -7,6 +7,8 @@ fi
 
 export ZSH="$HOME/.oh-my-zsh"
 PATH="$HOME/.cargo/bin:$PATH"
+PATH="/usr/local/bin:$PATH"
+PATH="$HOME/.local/bin:$PATH"
 export PATH
 
 if [[ $- == *i* ]]; then
@@ -80,3 +82,20 @@ eval "$(atuin init zsh)"
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 start_if_needed
+
+# Added by Antigravity
+export PATH="/Users/edwinvillota/.antigravity/antigravity/bin:$PATH"
+
+# opencode
+export PATH=/Users/edwinvillota/.opencode/bin:$PATH
+
+# Added by Antigravity
+export PATH="/Users/edwinvillota/.antigravity/antigravity/bin:$PATH"
+
+# bun completions
+[ -s "/Users/edwinvillota/.bun/_bun" ] && source "/Users/edwinvillota/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+

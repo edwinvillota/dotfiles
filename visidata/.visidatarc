@@ -1,0 +1,57 @@
+# Auto-detect the CSV delimiter, which VisiData does not do on its own:
+# its csv loader passes options.csv_delimiter (default ",") straight to csv.reader.
+# Scores candidates by field-count consistency across a sample, like csvview.nvim.
+import csv as _csv
+from visidata import vd, Path
+
+_CANDIDATES = [',', ';', '\t', '|']
+
+
+def _sample_lines(p, n=20):
+    try:
+        with p.open_text(newline='') as fp:
+            return [line for _, line in zip(range(n), fp)]
+    except Exception:
+        return []
+
+
+def _score(lines, delim):
+    try:
+        rows = [r for r in _csv.reader(lines, delimiter=delim) if r]
+    except Exception:
+        return 0
+    if not rows:
+        return 0
+    counts = [len(r) for r in rows]
+    nfields = max(set(counts), key=counts.count)
+    if nfields < 2:
+        return 0
+    # consistency * field count, so ";" beats "," on a 5-field semicolon file
+    return (counts.count(nfields) / len(counts)) * nfields
+
+
+def sniff_csv_delimiter(p):
+    lines = _sample_lines(p)
+    if not lines:
+        return None
+    best = max(_CANDIDATES, key=lambda d: _score(lines, d))
+    return best if _score(lines, best) > 0 else None
+
+
+_orig_open_csv = vd.open_csv
+
+
+def open_csv(p, *args, **kwargs):
+    sheet = _orig_open_csv(p, *args, **kwargs)
+    # Respect an explicit --csv-delimiter; only guess when it's still the default.
+    if vd.options.csv_delimiter == vd.options.getdefault('csv_delimiter'):
+        d = sniff_csv_delimiter(p)
+        if d and d != ',':
+            # CsvSheet.iterload reads self.source.options, not the sheet's,
+            # so the override has to land on the Path.
+            p.options.csv_delimiter = d
+            vd.status(f'detected delimiter: {d!r}')
+    return sheet
+
+
+vd.open_csv = open_csv

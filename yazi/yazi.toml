@@ -1,0 +1,50 @@
+[mgr]
+ratio          = [1, 3, 4]
+sort_by        = "natural"
+sort_sensitive = false
+sort_dir_first = true
+linemode       = "size"
+show_hidden    = false
+show_symlink   = true
+scrolloff      = 5
+
+[preview]
+max_width  = 1000
+max_height = 1000
+image_delay  = 30
+image_filter = "lanczos3"
+image_quality = 85
+
+[opener]
+edit = [
+  { run = 'nvim "$@"', desc = "nvim", block = true, for = "unix" },
+]
+open = [
+  { run = 'open "$@"', desc = "Open with macOS", for = "macos" },
+]
+reveal = [
+  { run = 'open -R "$1"', desc = "Reveal in Finder", for = "macos" },
+]
+
+[open]
+prepend_rules = [
+  { url = "*/", use = [ "edit", "open", "reveal" ] },
+  # chafa previews are for identifying a file, not viewing it -- text in a
+  # screenshot is never legible at terminal cell resolution. So Enter on an
+  # image opens it in the real macOS viewer; the preview is just the thumbnail.
+  { mime = "**/image/*", use = [ "open", "reveal", "edit" ] },
+  { mime = "**/{audio,video}/*", use = [ "open", "reveal" ] },
+  { mime = "**/application/pdf", use = [ "open", "reveal" ] },
+]
+
+# [plugin]
+# The chafa override is DISABLED. Zellij 0.45 supports the kitty graphics
+# protocol, so yazi can use real images again. The plugin is still on disk at
+# ~/.config/yazi/plugins/chafa.yazi/ -- re-enable by uncommenting this block if
+# image previews ever bleed through modals again.
+# prepend_previewers = [
+#   { mime = "**/image/*", run = "chafa" },
+# ]
+# prepend_preloaders = [
+#   { mime = "**/image/*", run = "noop" },
+# ]

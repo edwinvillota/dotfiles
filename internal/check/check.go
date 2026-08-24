@@ -99,6 +99,13 @@ func scanFile(m *manifest.Manifest, abs, rel string) ([]Finding, error) {
 		if strings.Contains(line, "# public") || strings.Contains(line, "dotfiles:allow") {
 			continue
 		}
+		// Commented-out lines are documentation: placeholder examples like
+		// "postgres://u:p@host" trip the patterns constantly, and a real
+		// credential on a comment line would be caught in review anyway.
+		if t := strings.TrimSpace(line); strings.HasPrefix(t, "#") ||
+			strings.HasPrefix(t, "--") || strings.HasPrefix(t, "//") || strings.HasPrefix(t, ";") {
+			continue
+		}
 		for _, re := range m.SecretPatterns() {
 			if re.MatchString(line) {
 				out = append(out, Finding{File: rel, Line: n, Reason: "matches secret pattern " + re.String()})

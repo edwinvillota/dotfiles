@@ -1,0 +1,60 @@
+prSections:
+  - title: My PRs
+    filters: is:open author:@me
+  - title: Needs My Review
+    filters: is:open review-requested:@me
+  - title: MECBPO
+    filters: is:open org:MECBPO -author:@me
+
+issuesSections:
+  - title: Assigned
+    filters: is:open assignee:@me
+  - title: MECBPO
+    filters: is:open org:MECBPO
+
+defaults:
+  preview:
+    open: true
+    width: 60
+  prsLimit: 20
+  issuesLimit: 20
+  view: prs
+  refetchIntervalMinutes: 5
+
+keybindings:
+  prs:
+    # Actions on the PR's branch
+    - key: r
+      name: rerun failed
+      command: gh run rerun --failed -R {{.RepoName}} $(gh run list -R {{.RepoName}} -b {{.HeadRefName}} -L1 --json databaseId --jq '.[0].databaseId')
+    - key: w
+      name: watch run
+      command: gh run watch -R {{.RepoName}} $(gh run list -R {{.RepoName}} -b {{.HeadRefName}} -L1 --json databaseId --jq '.[0].databaseId')
+    - key: L
+      name: failed logs
+      command: gh run view -R {{.RepoName}} $(gh run list -R {{.RepoName}} -b {{.HeadRefName}} -L1 --json databaseId --jq '.[0].databaseId') --log-failed | less -R
+    - key: A
+      name: run list
+      command: gh run list -R {{.RepoName}} -L 30 | less -R
+
+# Ayu Dark — palette from ~/.local/share/nvim/lazy/ayu/lua/ayu/colors.lua
+theme:
+  ui:
+    table:
+      showSeparator: true
+      compact: false
+  colors:
+    text:
+      primary: "#BFBDB6"    # fg
+      secondary: "#59C2FF"  # entity
+      inverted: "#0B0E14"   # bg
+      faint: "#636A72"      # comment
+      warning: "#FF8F40"    # keyword
+      success: "#AAD94C"    # string
+      error: "#D95757"      # error
+    background:
+      selected: "#1B3A5B"   # selection_bg
+    border:
+      primary: "#59C2FF"    # entity
+      secondary: "#3C414A"  # guide_active
+      faint: "#11151C"      # line

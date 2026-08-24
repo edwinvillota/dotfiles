@@ -26,7 +26,7 @@ only = ["config", "*.pub"]
 [secrets]
 patterns = ['(?i)(password|token|psk)\s*=\s*\S', '://[^/:@\s]+:[^@\s]+@']
 `)
-	w("zsh/config/ok.zsh", "export EDITOR=nvim\nexport HOST=x # public\n")
+	w("zsh/config/ok.zsh", "export EDITOR=nvim\nexport HOST=x # public\n# export TOKEN=commented-example\n-- url = postgres://u:p@h/d\n")
 	w("zsh/config/bad.zsh", "export TOKEN=abc\nexport DB=postgres://u:p@h/d\n")
 	w("zsh/config/databases.zsh", "x")
 	w("zsh/config/databases.zsh.template", "export PASSWORD=\n")
