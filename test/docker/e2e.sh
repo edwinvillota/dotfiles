@@ -40,7 +40,9 @@ check '[ -f "$H/.local/state/dotfiles/ledger.json" ]' "ledger written"
 check 'grep -q "zjstatus.wasm\"" "$H/.cache/zellij/permissions.kdl"' "zellij plugin permissions pre-granted"
 check 'grep -q "ORIGINAL init" "$H"/.local/state/dotfiles/backups/*/.config/nvim/init.lua' "original init.lua preserved"
 check 'zsh -n "$H/.config/zsh/"*.zsh' "installed zsh files parse"
-if [ -f "$H/.config/zsh/mec.zsh" ]; then bad "mec.zsh (secret) was installed although live absent? should be created from template only"; fi
+check '[ -f "$H/.config/zsh/mec.zsh" ]' "mec.zsh created from template (live was absent)"
+check '[ "$(stat -c %a "$H/.config/zsh/mec.zsh")" = 600 ]' "created secret is chmod 600"
+check '! grep -q "=[^ ]" "$H/.config/zsh/mec.zsh" || grep -q "# public" "$H/.config/zsh/mec.zsh"' "created secret has blanked values"
 
 step "install again (idempotent)"
 out=$(dotfiles install --yes --profile personal)
