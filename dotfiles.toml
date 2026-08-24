@@ -119,3 +119,147 @@ dest = "~/.config/git"
 src = "git/.gitconfig"
 dest = "~/.gitconfig"
 mode = "backup-only"   # user/email differ per machine; seed only if absent
+
+# ---------------------------------------------------------------------------
+# Dependencies. `dotfiles deps` installs what's missing, skips what's present.
+#
+# Strategy: Homebrew is the primary manager on BOTH platforms (.zshrc sources
+# plugins from $(brew --prefix)/share). On Linux, apt/pacman provide the base
+# layer and fall back for anything they carry; Linuxbrew is installed when a
+# package is only available there.
+#
+# Per-package keys (all optional, default = package name everywhere):
+#   bin      binary to look for; string or { darwin = "...", linux = "..." }
+#   brew     formula name, or { cask = "..." }, or { skip = true }
+#   apt/pacman  package name, or { skip = true, note = "..." }
+#   min      minimum version (checked with `<bin> --version`)
+#   kind     "git" | "gh-extension" | "script"  (non-package installs)
+#   needs    other deps that must be present first
+#   os       restrict to ["darwin"] / ["linux"]
+# ---------------------------------------------------------------------------
+[deps]
+core = ["git", "zsh", "nvim", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
+        "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
+        "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
+extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
+         "btop", "gdu", "dust", "visidata", "lazydocker", "colima", "docker",
+         "docker-compose", "gh", "gh-dash", "lazysql"]
+
+[deps.pkg.nvim]
+brew = "neovim"
+pacman = "neovim"
+min = "0.12"
+apt = { skip = true, note = "apt ships < 0.12; installed via Homebrew" }
+
+[deps.pkg.oh-my-zsh]
+kind = "git"
+url = "https://github.com/ohmyzsh/ohmyzsh.git"
+dest = "~/.oh-my-zsh"
+needs = ["git", "zsh"]
+
+[deps.pkg.powerlevel10k]
+bin = { darwin = "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme", linux = "/home/linuxbrew/.linuxbrew/share/powerlevel10k/powerlevel10k.zsh-theme" }
+pacman = "zsh-theme-powerlevel10k"
+apt = { skip = true }
+
+[deps.pkg.zsh-autocomplete]
+bin = { darwin = "/opt/homebrew/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh", linux = "/home/linuxbrew/.linuxbrew/share/zsh-autocomplete/zsh-autocomplete.plugin.zsh" }
+apt = { skip = true }
+pacman = { skip = true, note = "AUR only; installed via Homebrew" }
+
+[deps.pkg.zsh-syntax-highlighting]
+bin = { darwin = "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh", linux = "/home/linuxbrew/.linuxbrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" }
+apt = { skip = true, note = ".zshrc sources it from brew prefix" }
+pacman = { skip = true }
+
+[deps.pkg.zsh-autosuggestions]
+bin = { darwin = "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh", linux = "/home/linuxbrew/.linuxbrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh" }
+apt = { skip = true, note = ".zshrc sources it from brew prefix" }
+pacman = { skip = true }
+
+[deps.pkg.wezterm]
+bin = { darwin = "/Applications/WezTerm.app/Contents/MacOS/wezterm", linux = "wezterm" }
+brew = { cask = "wezterm" }
+pacman = "wezterm"
+apt = { skip = true, note = "no apt package; use the Flatpak or .deb from wezfurlong.org" }
+os = ["darwin", "linux"]
+
+[deps.pkg.fd]
+apt = "fd-find"
+bin = { darwin = "fd", linux = "fd" }   # apt's binary is fdfind; brew's is fd
+
+[deps.pkg.ripgrep]
+bin = "rg"
+
+[deps.pkg.bat]
+bin = "bat"   # apt names it batcat; we prefer brew's `bat` so .zshrc aliases work
+
+[deps.pkg.carapace]
+apt = { skip = true }
+pacman = { skip = true, note = "AUR (carapace-bin); via Homebrew" }
+
+[deps.pkg.atuin]
+apt = { skip = true }
+
+[deps.pkg.zellij]
+apt = { skip = true }
+
+[deps.pkg.zoxide]
+
+[deps.pkg.sevenzip]
+bin = "7zz"
+apt = "7zip"
+pacman = "7zip"
+
+[deps.pkg.poppler]
+bin = "pdftoppm"
+apt = "poppler-utils"
+
+[deps.pkg.imagemagick]
+bin = "magick"
+
+[deps.pkg.gdu]
+bin = { darwin = "gdu-go", linux = "gdu" }   # brew's gdu collides with coreutils on macOS
+
+[deps.pkg.dust]
+apt = { skip = true }
+
+[deps.pkg.visidata]
+bin = "vd"
+
+[deps.pkg.yazi]
+apt = { skip = true }
+
+[deps.pkg.lazydocker]
+apt = { skip = true }
+
+[deps.pkg.lazysql]
+apt = { skip = true }
+pacman = { skip = true, note = "AUR; via Homebrew" }
+
+[deps.pkg.colima]
+os = ["darwin"]
+
+[deps.pkg.docker]
+brew = { skip = true, note = "on macOS the docker CLI comes with colima: `brew install docker` is fine but colima is the runtime" }
+apt = "docker.io"
+os = ["linux", "darwin"]
+
+[deps.pkg.docker-compose]
+bin = "docker-compose"
+apt = "docker-compose-v2"
+
+[deps.pkg.gh]
+pacman = "github-cli"
+
+[deps.pkg.gh-dash]
+kind = "gh-extension"
+name = "dlvhdr/gh-dash"
+needs = ["gh"]
+
+[deps.pkg.homebrew]
+kind = "script"
+bin = "brew"
+url = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+apt_prereqs = ["build-essential", "curl", "file", "git", "procps"]
+pacman_prereqs = ["base-devel", "curl", "file", "git", "procps-ng"]

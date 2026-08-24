@@ -81,7 +81,76 @@ type Global struct {
 	Ignore []string `toml:"ignore"`
 }
 
+// PkgRef is a package-manager entry: a name string, or a table
+// { cask = "x" } / { skip = true, note = "..." }.
+type PkgRef struct {
+	Name string
+	Cask bool
+	Skip bool
+	Note string
+	set  bool
+}
+
+func (r *PkgRef) UnmarshalTOML(v any) error {
+	r.set = true
+	switch x := v.(type) {
+	case string:
+		r.Name = x
+	case map[string]any:
+		if c, ok := x["cask"].(string); ok {
+			r.Name, r.Cask = c, true
+		}
+		if s, ok := x["skip"].(bool); ok {
+			r.Skip = s
+		}
+		if n, ok := x["note"].(string); ok {
+			r.Note = n
+		}
+	default:
+		return fmt.Errorf("package ref must be a string or table")
+	}
+	return nil
+}
+
+// Resolve returns (name, cask, skip, note) defaulting name to def.
+func (r PkgRef) Resolve(def string) (string, bool, bool, string) {
+	if r.Name == "" {
+		return def, r.Cask, r.Skip, r.Note
+	}
+	return r.Name, r.Cask, r.Skip, r.Note
+}
+
+// PkgRef2 is Resolve without the cask flag (apt/pacman).
+func (r PkgRef) Resolve2(def string) (string, bool, string) {
+	n, _, s, note := r.Resolve(def)
+	return n, s, note
+}
+
+type PkgSpec struct {
+	Bin           Dest     `toml:"bin"`
+	Brew          PkgRef   `toml:"brew"`
+	Apt           PkgRef   `toml:"apt"`
+	Pacman        PkgRef   `toml:"pacman"`
+	Min           string   `toml:"min"`
+	Kind          string   `toml:"kind"`
+	URL           string   `toml:"url"`
+	Dest          string   `toml:"dest"`
+	Name          string   `toml:"name"`
+	Needs         []string `toml:"needs"`
+	OS            []string `toml:"os"`
+	Note          string   `toml:"note"`
+	AptPrereqs    []string `toml:"apt_prereqs"`
+	PacmanPrereqs []string `toml:"pacman_prereqs"`
+}
+
+type Deps struct {
+	Core  []string            `toml:"core"`
+	Extra []string            `toml:"extra"`
+	Pkg   map[string]*PkgSpec `toml:"pkg"`
+}
+
 type Manifest struct {
+	Deps     Deps                `toml:"deps"`
 	Global   Global              `toml:"global"`
 	Units    map[string]*Unit    `toml:"unit"`
 	Profiles map[string]*Profile `toml:"profile"`

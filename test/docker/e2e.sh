@@ -80,5 +80,30 @@ check 'grep -q "export HOST=h # public" "$SCRATCH/zsh/config/databases.zsh.templ
 echo 'export API_KEY=sk-live-123' > "$SCRATCH/zsh/config/oops.zsh"
 ( cd "$SCRATCH" && ! dotfiles check >/dev/null 2>&1 ); check '[ $? = 0 ]' "check FAILS on leaked secret"
 
+step "deps: resolution on Linux/apt (dry-run)"
+out=$(dotfiles deps --dry-run 2>&1)
+check 'echo "$out" | grep -q "platform: linux/.* ubuntu"' "platform detected as linux/ubuntu"
+check 'echo "$out" | grep -Eq "^  ✓ git +/usr/bin/git"' "git detected present"
+check 'echo "$out" | grep -Eq "^  → fd +apt fd-find"' "fd maps to apt fd-find"
+check 'echo "$out" | grep -Eq "^  → sevenzip +apt 7zip"' "sevenzip maps to apt 7zip"
+check 'echo "$out" | grep -Eq "^  → nvim +brew neovim \(Homebrew will be installed first\)"' "nvim needs Homebrew (apt too old)"
+check 'echo "$out" | grep -Eq "^  ⊘ colima"' "colima marked darwin-only"
+check 'echo "$out" | grep -Eq "^  ⊘ wezterm"' "wezterm unsupported via apt, with note"
+check 'echo "$out" | grep -Eq "^  → oh-my-zsh +git https://github.com/ohmyzsh"' "oh-my-zsh planned as git clone"
+check 'echo "$out" | grep -q "homebrew prerequisites: sudo apt-get install"' "Homebrew bootstrap planned with apt prereqs"
+check 'echo "$out" | grep -q "nothing installed"' "dry-run installed nothing"
+
+step "deps: real apt install of a small subset"
+if [ -n "${E2E_NET:-}" ]; then
+  dotfiles deps --only ripgrep --only fd --only oh-my-zsh 2>&1 | tail -3
+  check 'command -v rg' "ripgrep installed via apt"
+  check 'command -v fdfind' "fd-find installed via apt"
+  check '[ -d "$HOME/.oh-my-zsh" ]' "oh-my-zsh cloned"
+  out=$(dotfiles deps --dry-run --only ripgrep --only oh-my-zsh)
+  check 'echo "$out" | grep -q "0 to install"' "re-run reports nothing to install"
+else
+  echo "  (skipped: set E2E_NET=1 to run network installs)"
+fi
+
 echo; echo "RESULT: $pass passed, $fail failed"
 [ "$fail" = 0 ]

@@ -11,6 +11,7 @@ import (
 
 	"github.com/edwinvillota/dotfiles/internal/apply"
 	"github.com/edwinvillota/dotfiles/internal/check"
+	"github.com/edwinvillota/dotfiles/internal/deps"
 	"github.com/edwinvillota/dotfiles/internal/ledger"
 	"github.com/edwinvillota/dotfiles/internal/manifest"
 	"github.com/edwinvillota/dotfiles/internal/plan"
@@ -24,6 +25,7 @@ func usage() {
 Usage:
   dotfiles backup   [--dry-run] [--profile P] [--unit U ...]   live -> repo
   dotfiles install  [--dry-run] [--profile P] [--unit U ...] [--symlink] [--prune] repo -> live
+  dotfiles deps     [--dry-run] [--core|--extra] [--only NAME ...]  install missing tools
   dotfiles uninstall [--dry-run] [--unit U ...] [--no-restore]  undo install, restore originals
   dotfiles check    [--quiet]                                   refuse secrets in the repo
   dotfiles hook                                                  install pre-commit hook
@@ -48,6 +50,9 @@ type common struct {
 	yes     bool
 	quiet   bool
 	noRest  bool
+	core    bool
+	extra   bool
+	only    multi
 }
 
 type multi []string
@@ -81,6 +86,9 @@ func main() {
 	fs.BoolVar(&c.yes, "y", false, "")
 	fs.BoolVar(&c.quiet, "quiet", false, "")
 	fs.BoolVar(&c.noRest, "no-restore", false, "")
+	fs.BoolVar(&c.core, "core", false, "")
+	fs.BoolVar(&c.extra, "extra", false, "")
+	fs.Var(&c.only, "only", "")
 	fs.Parse(args)
 
 	if home == "" {
@@ -100,6 +108,8 @@ func main() {
 		err = c.run(plan.Backup)
 	case "install":
 		err = c.run(plan.Install)
+	case "deps":
+		err = c.deps()
 	case "uninstall":
 		err = c.uninstall()
 	case "check":
@@ -299,4 +309,63 @@ func printPlan(p *plan.Plan) {
 
 func (c *common) diff() error {
 	return fmt.Errorf("diff not implemented yet")
+}
+
+func (c *common) deps() error {
+	p := deps.Detect()
+	names := c.only
+	if len(names) == 0 {
+		switch {
+		case c.core:
+			names = c.m.Deps.Core
+		case c.extra:
+			names = c.m.Deps.Extra
+		default:
+			names = append(append([]string{}, c.m.Deps.Core...), c.m.Deps.Extra...)
+		}
+	}
+	brew := p.Brew
+	if brew == "" {
+		brew = "absent (" + p.BrewDir + ")"
+	}
+	fmt.Printf("platform: %s/%s %s  brew: %s  native: %s\n\n", p.OS, p.Arch, p.Distro, brew, orNone(p.Native()))
+	items := deps.Resolve(c.m, p, names)
+	var todo int
+	for _, it := range items {
+		mark := map[deps.Status]string{deps.Present: "✓", deps.Outdated: "↑", deps.Missing: "→", deps.Unsupported: "⊘", deps.NeedsBrew: "→"}[it.Status]
+		detail := it.Found
+		switch it.Status {
+		case deps.Missing, deps.Outdated:
+			detail = it.Manager + " " + it.Pkg
+			todo++
+		case deps.NeedsBrew:
+			detail = "brew " + it.Pkg + " (Homebrew will be installed first)"
+			todo++
+		case deps.Unsupported:
+			detail = it.Note
+		}
+		if it.Status == deps.Outdated {
+			detail += "  (" + it.Note + ")"
+		}
+		fmt.Printf("  %s %-24s %s\n", mark, it.Name, detail)
+	}
+	fmt.Printf("\n%d to install\n", todo)
+	if todo == 0 {
+		return nil
+	}
+	fmt.Println()
+	if err := deps.Install(c.m, p, items, c.dryRun, os.Stdout); err != nil {
+		return err
+	}
+	if c.dryRun {
+		fmt.Println("\n(dry run — nothing installed)")
+	}
+	return nil
+}
+
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
 }
