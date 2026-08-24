@@ -1,10 +1,34 @@
 -- Import the wezterm API
 local wezterm = require("wezterm")
 
--- Initialize an empty configuration table
-local config = {
-	default_prog = { "/Users/edwinvillota/.cargo/bin/zellij" },
-}
+-- Launch zellij when it is installed, from wherever it is installed
+-- (cargo, Homebrew on macOS or Linux, system package). On a machine
+-- without zellij, fall back to the default shell instead of erroring.
+local function find_zellij()
+	local home = wezterm.home_dir
+	local candidates = {
+		home .. "/.cargo/bin/zellij",
+		"/opt/homebrew/bin/zellij",
+		"/home/linuxbrew/.linuxbrew/bin/zellij",
+		"/usr/local/bin/zellij",
+		"/usr/bin/zellij",
+	}
+	for _, path in ipairs(candidates) do
+		local f = io.open(path, "r")
+		if f then
+			f:close()
+			return path
+		end
+	end
+	return nil
+end
+
+-- Initialize the configuration table
+local config = {}
+local zellij = find_zellij()
+if zellij then
+	config.default_prog = { zellij }
+end
 
 -- Removing window padding
 config.window_padding = {
