@@ -37,6 +37,7 @@ check '[ -f "$H/.config/nvim/lua/plugins/only-live.lua" ]' "live-only file NOT d
 check '[ -f "$H/.config/zsh/zz-completion.zsh" ] || [ ! -f "$DOTFILES/zsh/config/zz-completion.zsh" ]' "zsh modular files installed"
 check '[ "$(cat "$H/.ssh/id_test")" = "ORIGINAL key" ]' "ssh private key untouched"
 check '[ -f "$H/.local/state/dotfiles/ledger.json" ]' "ledger written"
+check 'grep -q "zjstatus.wasm\"" "$H/.cache/zellij/permissions.kdl"' "zellij plugin permissions pre-granted"
 check 'grep -q "ORIGINAL init" "$H"/.local/state/dotfiles/backups/*/.config/nvim/init.lua' "original init.lua preserved"
 check 'zsh -n "$H/.config/zsh/"*.zsh' "installed zsh files parse"
 if [ -f "$H/.config/zsh/mec.zsh" ]; then bad "mec.zsh (secret) was installed although live absent? should be created from template only"; fi

@@ -69,12 +69,19 @@ func Run(m *manifest.Manifest, p *plan.Plan, o Options) (*Result, error) {
 		}
 	}
 
+	touched := map[string]bool{}
 	for _, a := range changes {
+		touched[a.Unit] = true
 		if err := applyOne(m, p.Direction, a, led, o, res); err != nil {
 			if led != nil {
 				led.Save()
 			}
 			return res, fmt.Errorf("%s: %w", a.To, err)
+		}
+	}
+	if p.Direction == plan.Install {
+		if err := postInstall(m, touched, led, o.Log); err != nil {
+			res.Notices = append(res.Notices, "post-install: "+err.Error())
 		}
 	}
 	if led != nil {
