@@ -24,7 +24,7 @@ linux:
 DOCKER_ARCH ?= $(shell docker version --format '{{.Server.Arch}}' 2>/dev/null || echo amd64)
 test: unit linux
 	docker build -q -f test/docker/Dockerfile --build-arg TARGETARCH=$(DOCKER_ARCH) -t dotfiles-e2e . >/dev/null
-	docker run --rm -e E2E_NET=$(E2E_NET) dotfiles-e2e
+	docker run --rm -e E2E_NET=$(E2E_NET) -e E2E_BREW=$(E2E_BREW) dotfiles-e2e
 
 clean:
 	rm -rf bin dist

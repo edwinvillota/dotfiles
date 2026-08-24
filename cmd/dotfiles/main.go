@@ -6,15 +6,22 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/edwinvillota/dotfiles/internal/apply"
 	"github.com/edwinvillota/dotfiles/internal/check"
 	"github.com/edwinvillota/dotfiles/internal/deps"
+	"github.com/edwinvillota/dotfiles/internal/diff"
 	"github.com/edwinvillota/dotfiles/internal/ledger"
 	"github.com/edwinvillota/dotfiles/internal/manifest"
 	"github.com/edwinvillota/dotfiles/internal/plan"
+	"github.com/edwinvillota/dotfiles/internal/state"
+	"github.com/edwinvillota/dotfiles/internal/tui"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 var version = "dev"
@@ -30,9 +37,13 @@ Usage:
   dotfiles check    [--quiet]                                   refuse secrets in the repo
   dotfiles hook                                                  install pre-commit hook
   dotfiles diff     [--unit U ...]                              show differences
+  dotfiles profile  [NAME]                                       show or set the active profile
+  dotfiles tui                                                   interactive mode (default)
   dotfiles version
 
   --yes / -y        skip confirmation prompts (deletions)
+  --all             ignore the selection saved by the TUI (state.toml)
+  --profile P       defaults to the profile saved by 'dotfiles profile P'
 
 Global flags:
   --manifest PATH   dotfiles.toml (default: auto-detect from cwd or $DOTFILES)
@@ -53,6 +64,7 @@ type common struct {
 	core    bool
 	extra   bool
 	only    multi
+	all     bool
 }
 
 type multi []string
@@ -61,11 +73,14 @@ func (m *multi) String() string     { return fmt.Sprint([]string(*m)) }
 func (m *multi) Set(s string) error { *m = append(*m, s); return nil }
 
 func main() {
-	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+	cmd, args := "tui", []string{}
+	if len(os.Args) >= 2 {
+		cmd, args = os.Args[1], os.Args[2:]
 	}
-	cmd, args := os.Args[1], os.Args[2:]
+	if cmd == "-h" || cmd == "--help" || cmd == "help" {
+		usage()
+		return
+	}
 	if cmd == "version" {
 		fmt.Println(version)
 		return
@@ -89,6 +104,7 @@ func main() {
 	fs.BoolVar(&c.core, "core", false, "")
 	fs.BoolVar(&c.extra, "extra", false, "")
 	fs.Var(&c.only, "only", "")
+	fs.BoolVar(&c.all, "all", false, "")
 	fs.Parse(args)
 
 	if home == "" {
@@ -121,6 +137,10 @@ func main() {
 		}
 	case "diff":
 		err = c.diff()
+	case "profile":
+		err = c.profileCmd(fs.Args())
+	case "tui":
+		err = c.tui()
 	default:
 		usage()
 		os.Exit(2)
@@ -159,6 +179,24 @@ func findManifest(explicit string) (string, error) {
 
 func (c *common) options(dir plan.Direction) (plan.Options, error) {
 	o := plan.Options{Direction: dir, Symlink: c.symlink, Prune: c.prune}
+	st, err := state.Load(c.m.Home)
+	if err != nil {
+		return o, err
+	}
+	if c.profile == "" {
+		c.profile = st.Profile
+	}
+	if !c.symlink && st.Symlink {
+		o.Symlink = true
+	}
+	if len(st.Disabled) > 0 && !c.all {
+		// resolve keys from a full plan so granules are known
+		full, err := plan.Build(c.m, plan.Options{Direction: dir})
+		if err != nil {
+			return o, err
+		}
+		o.Selected = st.Selected(full.Keys())
+	}
 	if c.profile != "" {
 		p, ok := c.m.Profiles[c.profile]
 		if !ok {
@@ -308,7 +346,32 @@ func printPlan(p *plan.Plan) {
 }
 
 func (c *common) diff() error {
-	return fmt.Errorf("diff not implemented yet")
+	o, err := c.options(plan.Install)
+	if err != nil {
+		return err
+	}
+	p, err := plan.Build(c.m, o)
+	if err != nil {
+		return err
+	}
+	color := isTerminal()
+	n := 0
+	for _, a := range p.Actions {
+		if a.Op != plan.OpUpdate || a.Redact {
+			continue
+		}
+		n++
+		fmt.Printf("\n━━ %s: %s\n", a.Unit, a.Rel)
+		fmt.Print(diff.Unified(a.To, a.From, "live", "repo", color))
+	}
+	cr, _, de, _, _ := p.Counts()
+	fmt.Printf("\n%d modified, %d only in repo, %d only live\n", n, cr, de)
+	return nil
+}
+
+func isTerminal() bool {
+	fi, err := os.Stdout.Stat()
+	return err == nil && fi.Mode()&os.ModeCharDevice != 0
 }
 
 func (c *common) deps() error {
@@ -368,4 +431,87 @@ func orNone(s string) string {
 		return "none"
 	}
 	return s
+}
+
+func (c *common) profileCmd(args []string) error {
+	st, err := state.Load(c.m.Home)
+	if err != nil {
+		return err
+	}
+	if len(args) == 0 {
+		cur := st.Profile
+		if cur == "" {
+			cur = "(none)"
+		}
+		fmt.Println("active profile:", cur)
+		for _, n := range sortedProfiles(c.m) {
+			p := c.m.Profiles[n]
+			fmt.Printf("  %-10s branch=%-8s exclude=%v\n", n, p.Branch, p.Exclude)
+		}
+		return nil
+	}
+	name := args[0]
+	p, ok := c.m.Profiles[name]
+	if !ok {
+		return fmt.Errorf("unknown profile %q", name)
+	}
+	st.Profile = name
+	if err := st.Save(); err != nil {
+		return err
+	}
+	fmt.Println("active profile:", name)
+	if p.Branch != "" {
+		return ensureBranch(c.m.Root, p.Branch)
+	}
+	return nil
+}
+
+func sortedProfiles(m *manifest.Manifest) []string {
+	var out []string
+	for n := range m.Profiles {
+		out = append(out, n)
+	}
+	sortStrings(out)
+	return out
+}
+
+// ensureBranch creates the profile's branch from HEAD if it does not exist
+// (locally or on origin) and prints how to switch to it.
+func ensureBranch(root, branch string) error {
+	git := func(args ...string) (string, error) {
+		out, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput()
+		return strings.TrimSpace(string(out)), err
+	}
+	if _, err := git("rev-parse", "--verify", "--quiet", "refs/heads/"+branch); err == nil {
+		fmt.Printf("branch %q exists locally\n", branch)
+	} else if _, err := git("rev-parse", "--verify", "--quiet", "refs/remotes/origin/"+branch); err == nil {
+		if _, err := git("branch", "--track", branch, "origin/"+branch); err != nil {
+			return err
+		}
+		fmt.Printf("created local branch %q tracking origin/%s\n", branch, branch)
+	} else {
+		if _, err := git("branch", branch); err != nil {
+			return fmt.Errorf("create branch %s: %w", branch, err)
+		}
+		fmt.Printf("created branch %q from HEAD (it did not exist locally or on origin)\n", branch)
+	}
+	cur, _ := git("rev-parse", "--abbrev-ref", "HEAD")
+	if cur != branch {
+		fmt.Printf("note: you are on %q; run `git checkout %s` before backing up this machine\n", cur, branch)
+	}
+	return nil
+}
+
+func sortStrings(x []string) { sort.Strings(x) }
+
+func (c *common) tui() error {
+	st, err := state.Load(c.m.Home)
+	if err != nil {
+		return err
+	}
+	if c.profile != "" {
+		st.Profile = c.profile
+	}
+	_, err = tea.NewProgram(tui.New(c.m, st), tea.WithAltScreen()).Run()
+	return err
 }
