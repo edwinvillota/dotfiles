@@ -20,6 +20,7 @@ import (
 	"github.com/edwinvillota/dotfiles/internal/manifest"
 	"github.com/edwinvillota/dotfiles/internal/plan"
 	"github.com/edwinvillota/dotfiles/internal/state"
+	"github.com/edwinvillota/dotfiles/internal/theme"
 )
 
 type pane int
@@ -37,6 +38,7 @@ const (
 	modeHelp
 	modeConfirm
 	modeResult
+	modeTheme
 )
 
 // row is one line of the tree.
@@ -79,9 +81,13 @@ type Model struct {
 	result   string
 	resultOK bool
 	confirm  string
+
+	themeNames []string
+	themeIdx   int
 }
 
 func New(m *manifest.Manifest, st *state.State) *Model {
+	initStyles(st.Theme)
 	ti := textinput.New()
 	ti.Prompt = "/"
 	ti.PromptStyle = sGold
@@ -421,6 +427,23 @@ func (md *Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return md, cmd
 		}
 		return md, nil
+	case modeTheme:
+		switch s {
+		case "j", "down":
+			if md.themeIdx < len(md.themeNames)-1 {
+				md.themeIdx++
+			}
+		case "k", "up":
+			if md.themeIdx > 0 {
+				md.themeIdx--
+			}
+		case "enter":
+			md.mode = modeNormal
+			md.applyTheme(md.themeNames[md.themeIdx])
+		case "esc", "q", "t":
+			md.mode = modeNormal
+		}
+		return md, nil
 	case modeConfirm:
 		switch s {
 		case "y", "Y", "enter":
@@ -583,6 +606,19 @@ func (md *Model) key(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		md.askConfirm()
 	case "x":
 		md.askConfirm()
+	case "t":
+		md.themeNames = theme.Names()
+		md.themeIdx = 0
+		active := md.st.Theme
+		if active == "" {
+			active = theme.Default
+		}
+		for i, n := range md.themeNames {
+			if n == active {
+				md.themeIdx = i
+			}
+		}
+		md.mode = modeTheme
 	}
 	return md, nil
 }
@@ -654,6 +690,8 @@ func (md *Model) View() string {
 		return md.overlay(out, md.confirm)
 	case modeResult:
 		return md.overlay(out, md.resultText())
+	case modeTheme:
+		return md.overlay(out, md.themePickerText())
 	}
 	return sBase.Render(out)
 }
@@ -779,7 +817,7 @@ func (md *Model) viewPreview() string {
 }
 
 func (md *Model) viewStatus() string {
-	keys := []string{"j/k", "move", "Space", "toggle", "/", "filter", "d", "diff", "m", "backup⇄install", "p", "profile", "b", "backup", "i", "install", "?", "help", "q", "quit"}
+	keys := []string{"j/k", "move", "Space", "toggle", "/", "filter", "d", "diff", "m", "backup⇄install", "p", "profile", "t", "theme", "b", "backup", "i", "install", "?", "help", "q", "quit"}
 	var sb strings.Builder
 	for i := 0; i+1 < len(keys); i += 2 {
 		next := sKey.Render(keys[i]) + " " + sDim.Render(keys[i+1]) + "  "
@@ -811,6 +849,63 @@ func (md *Model) resultText() string {
 	return title + "\n\n" + body + "\n\n" + sDim.Render("press Enter to continue")
 }
 
+func (md *Model) themePickerText() string {
+	active := md.st.Theme
+	if active == "" {
+		active = theme.Default
+	}
+	var sb strings.Builder
+	sb.WriteString(sTitle.Render("theme — one look for every tool") + "\n\n")
+	for i, n := range md.themeNames {
+		label := n
+		if p, err := theme.Load(n); err == nil {
+			label = p.Label
+		}
+		cur := "  "
+		if i == md.themeIdx {
+			cur = sBlue.Render("▍ ")
+		}
+		mark := "  "
+		if n == active {
+			mark = sGreen.Render("● ")
+		}
+		line := fmt.Sprintf("%-26s", label)
+		if i == md.themeIdx {
+			line = sCursor.Render(line)
+		}
+		sb.WriteString(cur + mark + line + "\n")
+	}
+	sb.WriteString("\n" + sDim.Render("wezterm reloads live; zellij needs a restart; nvim: new instances") + "\n")
+	sb.WriteString(sDim.Render("j/k choose · Enter apply · Esc cancel"))
+	return sb.String()
+}
+
+// applyTheme switches every tool to the theme and re-skins this TUI.
+func (md *Model) applyTheme(name string) {
+	var buf bytes.Buffer
+	res, err := theme.Apply(md.m, name, nil, &buf)
+	if err != nil {
+		md.result, md.resultOK, md.mode = buf.String()+"\n"+err.Error(), false, modeResult
+		return
+	}
+	md.st.Theme = name
+	if err := md.st.Save(); err != nil {
+		md.result, md.resultOK, md.mode = err.Error(), false, modeResult
+		return
+	}
+	initStyles(name)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "theme switched to %s (%d file(s) written)\n\n", sGold.Render(name), res.Written)
+	for _, n := range res.Notices {
+		sb.WriteString(sDim.Render("note: "+n) + "\n")
+	}
+	sb.WriteString("\nwhat picks it up when:\n")
+	for _, r := range res.Reload {
+		sb.WriteString("  - " + r + "\n")
+	}
+	md.result, md.resultOK, md.mode = sb.String(), true, modeResult
+}
+
 func (md *Model) helpText() string {
 	k := func(s string) string { return sKey.Render(fmt.Sprintf("%-10s", s)) }
 	rows := [][2]string{
@@ -819,6 +914,7 @@ func (md *Model) helpText() string {
 		{"/", "filter (Esc clears)"}, {"Tab", "switch pane (preview scrolls with j/k)"},
 		{"d", "show diffs in preview"}, {"m", "switch backup ⇄ install"},
 		{"p", "cycle profile (none → personal → work)"}, {"s", "symlink mode for install"},
+		{"t", "switch theme (terminal, editor, TUIs — everything)"},
 		{"b", "run BACKUP  (live → repo)"}, {"i", "run INSTALL (repo → live)"}, {"x", "run current direction"},
 		{"r", "refresh"}, {"?", "this help"}, {"q", "quit"},
 	}

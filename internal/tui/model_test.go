@@ -216,3 +216,40 @@ func stripANSI(s string) string {
 	}
 	return sb.String()
 }
+
+func TestThemePickerApplies(t *testing.T) {
+	m, st := fixture(t)
+	md := New(m, st)
+	md.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	press(md, "t")
+	if md.mode != modeTheme {
+		t.Fatal("t should open the theme picker")
+	}
+	v := stripANSI(md.View())
+	if !strings.Contains(v, "Ayu Dark") || !strings.Contains(v, "Tokyo Night") {
+		t.Fatalf("picker missing themes:\n%s", v)
+	}
+	press(md, "j") // move to second theme
+	sel := md.themeNames[md.themeIdx]
+	press(md, "enter")
+	if md.mode != modeResult {
+		t.Fatalf("apply should end in result modal, log=%s", md.result)
+	}
+	if !md.resultOK {
+		t.Fatalf("theme apply failed: %s", md.result)
+	}
+	if st.Theme != sel {
+		t.Fatalf("state theme = %q, want %q", st.Theme, sel)
+	}
+	if _, err := os.Stat(filepath.Join(m.Home, ".config/nvim/lua/config/theme-active.lua")); err != nil {
+		t.Fatal("nvim theme-active.lua not written")
+	}
+	press(md, "t")
+	if md.themeNames[md.themeIdx] != sel {
+		t.Fatal("picker should highlight the active theme")
+	}
+	press(md, "esc")
+	if md.mode != modeNormal {
+		t.Fatal("esc should close the picker")
+	}
+}

@@ -14,21 +14,25 @@ import (
 	"github.com/edwinvillota/dotfiles/internal/manifest"
 	"github.com/edwinvillota/dotfiles/internal/plan"
 	"github.com/edwinvillota/dotfiles/internal/state"
+	"github.com/edwinvillota/dotfiles/internal/theme"
 )
 
-// Setup is the guided fresh-machine wizard: welcome → profile → features →
-// one review → run. A single confirmation for everything.
+// Setup is the guided fresh-machine wizard: welcome → profile → theme →
+// features → one review → run. A single confirmation for everything.
 type Setup struct {
 	m  *manifest.Manifest
 	st *state.State
 	pf deps.Platform
 
-	step   int // 0 welcome, 1 profile, 2 features, 3 review, 4 running, 5 done
+	step   int // 0 welcome, 1 profile, 2 theme, 3 features, 4 review, 5 running, 6 done
 	width  int
 	height int
 
 	profiles []string
 	profIdx  int
+
+	themes   []string
+	themeIdx int
 
 	feats  []feature
 	cursor int
@@ -52,10 +56,20 @@ type feature struct {
 }
 
 func NewSetup(m *manifest.Manifest, st *state.State) *Setup {
-	s := &Setup{m: m, st: st, pf: deps.Detect(), profiles: sortedKeys(m.Profiles)}
+	initStyles(st.Theme)
+	s := &Setup{m: m, st: st, pf: deps.Detect(), profiles: sortedKeys(m.Profiles), themes: theme.Names()}
 	for i, n := range s.profiles {
 		if n == st.Profile {
 			s.profIdx = i
+		}
+	}
+	activeTheme := st.Theme
+	if activeTheme == "" {
+		activeTheme = theme.Default
+	}
+	for i, n := range s.themes {
+		if n == activeTheme {
+			s.themeIdx = i
 		}
 	}
 	// terminal choice first: wezterm today, ghostty on the roadmap
@@ -142,9 +156,11 @@ func (s *Setup) run() tea.Cmd {
 	if len(s.profiles) > 0 {
 		prof = s.profiles[s.profIdx]
 	}
+	th := s.themes[s.themeIdx]
 	return func() tea.Msg {
 		var buf bytes.Buffer
 		st.Profile = prof
+		st.Theme = th
 		if err := st.Save(); err != nil {
 			return setupDone{buf.String(), err}
 		}
@@ -154,6 +170,11 @@ func (s *Setup) run() tea.Cmd {
 		res, err := apply.Run(m, p, apply.Options{Confirm: func(string) bool { return true }, Log: &buf})
 		if err != nil {
 			return setupDone{buf.String(), err}
+		}
+		// the post-install hook applies the theme when themed units are
+		// installed; run it explicitly too so a no-change install still themes
+		if _, err := theme.Apply(m, th, nil, &buf); err != nil {
+			fmt.Fprintf(&buf, "\ntheme issue (retry with `dotfiles theme %s`): %v\n", th, err)
 		}
 		fmt.Fprintf(&buf, "\nconfigs: %d written, %d deleted\n", res.Written, res.Deleted)
 		for _, n := range res.Notices {
@@ -169,11 +190,11 @@ func (s *Setup) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.width, s.height = msg.Width, msg.Height
 		return s, nil
 	case setupDone:
-		s.log, s.err, s.step = msg.log, msg.err, 5
+		s.log, s.err, s.step = msg.log, msg.err, 6
 		return s, nil
 	case tea.KeyMsg:
 		k := msg.String()
-		if k == "ctrl+c" || (k == "q" && s.step != 4) {
+		if k == "ctrl+c" || (k == "q" && s.step != 5) {
 			return s, tea.Quit
 		}
 		switch s.step {
@@ -197,6 +218,21 @@ func (s *Setup) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case 2:
 			switch k {
 			case "j", "down":
+				if s.themeIdx < len(s.themes)-1 {
+					s.themeIdx++
+				}
+			case "k", "up":
+				if s.themeIdx > 0 {
+					s.themeIdx--
+				}
+			case "enter":
+				s.step = 3
+			case "esc", "h":
+				s.step = 1
+			}
+		case 3:
+			switch k {
+			case "j", "down":
 				if s.cursor < len(s.feats)-1 {
 					s.cursor++
 				}
@@ -217,19 +253,19 @@ func (s *Setup) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				s.st.Save()
 				s.compute()
-				s.step = 3
-			case "esc", "h":
-				s.step = 1
-			}
-		case 3:
-			switch k {
-			case "enter", "y":
 				s.step = 4
-				return s, s.run()
-			case "esc", "h", "n":
+			case "esc", "h":
 				s.step = 2
 			}
-		case 5:
+		case 4:
+			switch k {
+			case "enter", "y":
+				s.step = 5
+				return s, s.run()
+			case "esc", "h", "n":
+				s.step = 3
+			}
+		case 6:
 			if k == "enter" {
 				return s, tea.Quit
 			}
@@ -249,8 +285,9 @@ func (s *Setup) View() string {
 			"This will set up this machine from the dotfiles repo:",
 			"",
 			"  1. pick a "+sBlue.Render("profile")+" (which machine this is)",
-			"  2. choose the "+sBlue.Render("features")+" you want — configs and tools",
-			"  3. review one summary, confirm "+sGold.Render("once")+", done",
+			"  2. pick a "+sBlue.Render("theme")+" (one look for every tool)",
+			"  3. choose the "+sBlue.Render("features")+" you want — configs and tools",
+			"  4. review one summary, confirm "+sGold.Render("once")+", done",
 			"",
 			sDim.Render("Nothing is written before the final confirmation. Anything replaced is")+"",
 			sDim.Render("preserved and restorable with `dotfiles uninstall`. ~/.zshrc and secret")+"",
@@ -271,6 +308,22 @@ func (s *Setup) View() string {
 		lines = append(lines, "", s.hint("j/k choose · Enter continue · q quit"))
 		body = strings.Join(lines, "\n")
 	case 2:
+		lines := []string{sTitle.Render("Pick a theme — terminal, editor and TUIs will all match"), ""}
+		for i, n := range s.themes {
+			label := n
+			if p, err := theme.Load(n); err == nil {
+				label = p.Label
+			}
+			cur := "  "
+			st := lipgloss.NewStyle().Foreground(cFg)
+			if i == s.themeIdx {
+				cur, st = sBlue.Render("▍ "), sCursor
+			}
+			lines = append(lines, cur+st.Render(fmt.Sprintf("%-26s", label)))
+		}
+		lines = append(lines, "", s.hint("j/k choose · Enter continue · Esc back"))
+		body = strings.Join(lines, "\n")
+	case 3:
 		lines := []string{sTitle.Render("What do you want on this machine?"), ""}
 		vis := s.height - 16
 		start := 0
@@ -314,7 +367,7 @@ func (s *Setup) View() string {
 		}
 		lines = append(lines, "", s.hint("Space toggle · j/k move · Enter continue · Esc back"))
 		body = strings.Join(lines, "\n")
-	case 3:
+	case 4:
 		if s.planErr != nil {
 			body = sRed.Render("error: "+s.planErr.Error()) + "\n\n" + s.hint("Esc back")
 			break
@@ -341,9 +394,9 @@ func (s *Setup) View() string {
 			sDim.Render("    replaced files are preserved; `dotfiles uninstall` restores them"), "",
 			s.hint("Enter run everything · Esc back"))
 		body = strings.Join(lines, "\n")
-	case 4:
-		body = sGold.Render("working… ") + sDim.Render("(tools may compile; this can take a while)")
 	case 5:
+		body = sGold.Render("working… ") + sDim.Render("(tools may compile; this can take a while)")
+	case 6:
 		head := sGreen.Render("✓ all done")
 		if s.err != nil {
 			head = sRed.Render("✗ finished with an error: " + s.err.Error())

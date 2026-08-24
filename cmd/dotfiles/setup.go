@@ -10,6 +10,7 @@ import (
 	"github.com/edwinvillota/dotfiles/internal/deps"
 	"github.com/edwinvillota/dotfiles/internal/plan"
 	"github.com/edwinvillota/dotfiles/internal/state"
+	"github.com/edwinvillota/dotfiles/internal/theme"
 )
 
 // setup is the guided fresh-machine walkthrough.
@@ -69,8 +70,33 @@ func (c *common) setup() error {
 		return err
 	}
 
-	// 2. deps
-	step(2, "tools", "The configs are useless without the programs that read them\n(nvim, zellij, fzf, ...). Present tools are skipped; the package\nmanager is picked per platform (brew / apt / pacman).")
+	// 2. theme
+	step(2, "theme", "One look for every tool: terminal, multiplexer, editor and TUIs\nall switch together. Change it any time with `dotfiles theme`.")
+	activeTheme := st.Theme
+	if activeTheme == "" {
+		activeTheme = theme.Default
+	}
+	for _, n := range theme.Names() {
+		mark := " "
+		if n == activeTheme {
+			mark = "●"
+		}
+		fmt.Printf("  %s %s\n", mark, n)
+	}
+	for {
+		t := ask("which theme?", activeTheme)
+		if _, err := theme.Load(t); err == nil {
+			st.Theme = t
+			break
+		}
+		fmt.Println("  unknown theme, options above")
+	}
+	if err := st.Save(); err != nil {
+		return err
+	}
+
+	// 3. deps
+	step(3, "tools", "The configs are useless without the programs that read them\n(nvim, zellij, fzf, ...). Present tools are skipped; the package\nmanager is picked per platform (brew / apt / pacman).")
 	pf := deps.Detect()
 	all := append(append([]string{}, c.m.Deps.Core...), c.m.Deps.Extra...)
 	items := deps.Resolve(c.m, pf, all)
@@ -96,8 +122,8 @@ func (c *common) setup() error {
 		}
 	}
 
-	// 3. configs
-	step(3, "configs", "Now the actual dotfiles. The plan below is everything that would\nbe written. Files that already exist are preserved under\n~/.local/state/dotfiles/backups/ and restorable with `dotfiles uninstall`.\n~/.zshrc and secret files are never overwritten.")
+	// 4. configs
+	step(4, "configs", "Now the actual dotfiles. The plan below is everything that would\nbe written. Files that already exist are preserved under\n~/.local/state/dotfiles/backups/ and restorable with `dotfiles uninstall`.\n~/.zshrc and secret files are never overwritten.")
 	o, err := c.options(plan.Install)
 	if err != nil {
 		return err
@@ -122,8 +148,14 @@ func (c *common) setup() error {
 		fmt.Println("  skipped — run `dotfiles install --dry-run` when ready")
 	}
 
-	// 4. finish
-	step(4, "done", "What you may still want:")
+	// the post-install hook themes freshly installed units; run it explicitly
+	// too so a no-change install still applies the chosen theme
+	if _, err := theme.Apply(c.m, st.Theme, nil, os.Stdout); err != nil {
+		fmt.Printf("  warning: theme apply: %v — retry with `dotfiles theme %s`\n", err, st.Theme)
+	}
+
+	// 5. finish
+	step(5, "done", "What you may still want:")
 	fmt.Println("  • fill in any *.zsh created from templates (secrets are blanked)")
 	fmt.Println("  • start a new shell:  exec zsh")
 	fmt.Println("  • protect the repo:   dotfiles hook   (pre-commit secret scan)")

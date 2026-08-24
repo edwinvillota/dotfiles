@@ -6,6 +6,7 @@ import (
 
 	"github.com/edwinvillota/dotfiles/internal/state"
 	"github.com/edwinvillota/dotfiles/internal/theme"
+	"github.com/edwinvillota/dotfiles/internal/tui"
 )
 
 // themeCmd: `dotfiles theme` lists themes, `dotfiles theme NAME` applies one.
@@ -22,6 +23,20 @@ func (c *common) themeCmd(args []string) error {
 	}
 
 	if len(args) == 0 {
+		// interactive selector when on a terminal — names are hard to
+		// remember; plain list otherwise (scripts, pipes)
+		if isTerminal() {
+			summary, err := tui.RunThemePicker(c.m, st)
+			if err != nil {
+				return err
+			}
+			if summary == "" {
+				fmt.Println("theme unchanged")
+			} else {
+				fmt.Print(summary)
+			}
+			return nil
+		}
 		fmt.Println("themes (● = active):")
 		for _, n := range theme.Names() {
 			p, err := theme.Load(n)
