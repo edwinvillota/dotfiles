@@ -107,11 +107,11 @@ fi
 
 step "deps: Linuxbrew bootstrap + brew install (slow)"
 if [ -n "${E2E_BREW:-}" ]; then
-  dotfiles deps --only zoxide 2>&1 | tail -5
+  dotfiles deps --only zellij 2>&1 | tail -5
   check '[ -x /home/linuxbrew/.linuxbrew/bin/brew ]' "Homebrew bootstrapped on Linux"
-  check '[ -x /home/linuxbrew/.linuxbrew/bin/zoxide ]' "zoxide installed via Linuxbrew"
-  out=$(dotfiles deps --dry-run --only zoxide --only nvim)
-  check 'echo "$out" | grep -Eq "^  ✓ zoxide"' "zoxide now detected"
+  check '[ -x /home/linuxbrew/.linuxbrew/bin/zellij ]' "zellij installed via Linuxbrew"
+  out=$(dotfiles deps --dry-run --only zellij --only nvim)
+  check 'echo "$out" | grep -Eq "^  ✓ zellij"' "zellij now detected"
   check 'echo "$out" | grep -Eq "^  → nvim +brew neovim$"' "nvim now plans a plain brew install"
 else
   echo "  (skipped: set E2E_BREW=1 to bootstrap Homebrew)"

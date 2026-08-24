@@ -105,7 +105,21 @@ func main() {
 	fs.BoolVar(&c.extra, "extra", false, "")
 	fs.Var(&c.only, "only", "")
 	fs.BoolVar(&c.all, "all", false, "")
-	fs.Parse(args)
+	// allow flags after positionals (e.g. `profile work --home X`)
+	var positional []string
+	for {
+		fs.Parse(args)
+		rest := fs.Args()
+		i := 0
+		for i < len(rest) && !strings.HasPrefix(rest[i], "-") {
+			positional = append(positional, rest[i])
+			i++
+		}
+		if i == len(rest) {
+			break
+		}
+		args = rest[i:]
+	}
 
 	if home == "" {
 		home, _ = os.UserHomeDir()
@@ -138,7 +152,7 @@ func main() {
 	case "diff":
 		err = c.diff()
 	case "profile":
-		err = c.profileCmd(fs.Args())
+		err = c.profileCmd(positional)
 	case "tui":
 		err = c.tui()
 	default:
