@@ -2,6 +2,7 @@ package deps
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/edwinvillota/dotfiles/internal/manifest"
@@ -52,8 +53,8 @@ func TestResolveLinuxApt(t *testing.T) {
 	if got["colima"].Status != Unsupported {
 		t.Error("colima should be darwin-only")
 	}
-	if got["wezterm"].Status != Unsupported {
-		t.Errorf("wezterm on apt should be unsupported with a note, got %s", got["wezterm"].Status)
+	if w := got["wezterm"]; w.Status != Missing || w.Manager != "deb" {
+		t.Errorf("wezterm on apt should install from the official .deb, got %+v", w)
 	}
 	if got["gdu"].Bin != "gdu" {
 		t.Errorf("gdu bin on linux = %q", got["gdu"].Bin)
@@ -84,5 +85,55 @@ func TestResolveDarwin(t *testing.T) {
 func TestVersionLess(t *testing.T) {
 	if !less("0.9.5", "0.12") || less("0.12.4", "0.12") || less("1.0", "0.99") {
 		t.Error("version compare wrong")
+	}
+}
+
+func TestResolveDebPackage(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	p := Platform{OS: "linux", Arch: "amd64", Distro: "ubuntu", Apt: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	var wez Item
+	for _, it := range Resolve(m, p, []string{"wezterm"}) {
+		wez = it
+	}
+	if wez.Status != Missing || wez.Manager != "deb" || !strings.Contains(wez.Cmd[2], "apt-get install -y") || !strings.Contains(wez.Cmd[2], "Ubuntu22.04.deb") {
+		t.Errorf("wezterm deb resolve wrong: %+v", wez)
+	}
+	p.Arch = "arm64"
+	for _, it := range Resolve(m, p, []string{"wezterm"}) {
+		wez = it
+	}
+	if wez.Status != Missing || !strings.Contains(wez.Cmd[2], "arm64.deb") {
+		t.Errorf("arm64 should install the arm64 deb: %+v", wez)
+	}
+}
+
+func TestResolveArchPacman(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	p := Platform{OS: "linux", Arch: "amd64", Distro: "arch", Pacman: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	got := map[string]Item{}
+	for _, it := range Resolve(m, p, append(m.Deps.Core, m.Deps.Extra...)) {
+		got[it.Name] = it
+	}
+	want := map[string]string{
+		"wezterm": "wezterm", "nvim": "neovim", "zellij": "zellij", "yazi": "yazi",
+		"gh": "github-cli", "sevenzip": "7zip", "powerlevel10k": "zsh-theme-powerlevel10k",
+		"dust": "dust", "atuin": "atuin", "fd": "fd", "gdu": "gdu",
+	}
+	for n, pkg := range want {
+		g := got[n]
+		if g.Status != Missing || g.Manager != "pacman" || g.Pkg != pkg {
+			t.Errorf("%s on arch: got %s %s %s, want pacman %s", n, g.Status, g.Manager, g.Pkg, pkg)
+		}
+		if len(g.Cmd) > 0 && g.Cmd[0] != "sudo" {
+			t.Errorf("%s: pacman must run under sudo: %v", n, g.Cmd)
+		}
+	}
+	// AUR-only tools fall back to Linuxbrew
+	for _, n := range []string{"zsh-autocomplete", "carapace", "lazysql"} {
+		if got[n].Status != NeedsBrew {
+			t.Errorf("%s on arch should need Homebrew, got %s", n, got[n].Status)
+		}
 	}
 }

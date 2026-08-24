@@ -30,7 +30,10 @@ FRESH MACHINE
   dotfiles setup            Interactive walkthrough: pick a profile, install
                             missing tools, then install the configs. Explains
                             each step and asks before doing anything.
-  dotfiles deps             Just the tools (brew/apt/pacman, auto-detected).
+  dotfiles deps             Just the tools. Supported platforms: macOS (brew),
+                            Ubuntu (apt + official .deb), Arch (pacman);
+                            Linuxbrew is bootstrapped when a tool exists
+                            nowhere else. wezterm included on all three.
   dotfiles uninstall        Undo an install: removes what was placed and
                             restores what was there before, byte for byte.
 

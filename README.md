@@ -20,6 +20,12 @@ dotfiles profile work    # personal (branch main) | work (branch office)
 ```
 `-n` / `--dry-run` shows exactly what would happen and writes nothing.
 
+**Supported platforms:** macOS (Homebrew), Ubuntu/Debian (apt + official .deb
++ Linuxbrew fallback), Arch (pacman + Linuxbrew fallback for AUR-only tools).
+Terminals: wezterm is installed and configured on all three; adding another
+(e.g. ghostty) is one `[unit.*]` + one `[deps.pkg.*]` block — a commented
+template sits in `dotfiles.toml`.
+
 ## Fresh machine
 
 ```sh
@@ -70,6 +76,8 @@ Re-running is a no-op. Per-machine choices (profile, toggles, symlink mode) live
 ```sh
 make unit               # go vet + tests (planner, redactor, deps table, TUI, …)
 make try                # interactive fresh-machine container (rehearse `dotfiles setup`)
+make try-gui            # same but with a display: run wezterm in the container,
+                        # view it at http://localhost:6080/vnc.html (browser VNC)
 make install-bin        # install the binary to ~/.local/bin
 make test               # full install/uninstall cycle in a throwaway Ubuntu container
 E2E_NET=1 make test     # + real apt installs and git clones

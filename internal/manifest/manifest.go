@@ -127,20 +127,23 @@ func (r PkgRef) Resolve2(def string) (string, bool, string) {
 }
 
 type PkgSpec struct {
-	Bin           Dest     `toml:"bin"`
-	Brew          PkgRef   `toml:"brew"`
-	Apt           PkgRef   `toml:"apt"`
-	Pacman        PkgRef   `toml:"pacman"`
-	Min           string   `toml:"min"`
-	Kind          string   `toml:"kind"`
-	URL           string   `toml:"url"`
-	Dest          string   `toml:"dest"`
-	Name          string   `toml:"name"`
-	Needs         []string `toml:"needs"`
-	OS            []string `toml:"os"`
-	Note          string   `toml:"note"`
-	AptPrereqs    []string `toml:"apt_prereqs"`
-	PacmanPrereqs []string `toml:"pacman_prereqs"`
+	Bin    Dest   `toml:"bin"`
+	Brew   PkgRef `toml:"brew"`
+	Apt    PkgRef `toml:"apt"`
+	Pacman PkgRef `toml:"pacman"`
+	Min    string `toml:"min"`
+	Kind   string `toml:"kind"`
+	URL    string `toml:"url"`
+	Dest   string `toml:"dest"`
+	Name   string `toml:"name"`
+	// Deb: per-arch URLs of an official .deb, for apt systems where no
+	// repo package exists (wezterm, ghostty, ...). Keys: amd64, arm64.
+	Deb           map[string]string `toml:"deb"`
+	Needs         []string          `toml:"needs"`
+	OS            []string          `toml:"os"`
+	Note          string            `toml:"note"`
+	AptPrereqs    []string          `toml:"apt_prereqs"`
+	PacmanPrereqs []string          `toml:"pacman_prereqs"`
 }
 
 type Deps struct {

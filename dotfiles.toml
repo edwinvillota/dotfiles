@@ -181,8 +181,21 @@ pacman = { skip = true }
 bin = { darwin = "/Applications/WezTerm.app/Contents/MacOS/wezterm", linux = "wezterm" }
 brew = { cask = "wezterm" }
 pacman = "wezterm"
-apt = { skip = true, note = "no apt package; use the Flatpak or .deb from wezfurlong.org" }
+apt = { skip = true, note = "no repo package; installed from the official .deb below" }
+# official release .debs
+deb = { amd64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.deb", arm64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.arm64.deb" }
 os = ["darwin", "linux"]
+
+# --- adding another terminal later (e.g. ghostty) is two blocks: -----------
+# [unit.ghostty]
+# src = "ghostty"
+# dest = "~/.config/ghostty"
+#
+# [deps.pkg.ghostty]
+# brew = { cask = "ghostty" }
+# pacman = "ghostty"
+# apt = { skip = true, note = "installed from .deb" }
+# deb = { amd64 = "https://github.com/mkasberg/ghostty-ubuntu/releases/download/<ver>/ghostty_<ver>_amd64_24.04.deb" }
 
 [deps.pkg.fd]
 apt = "fd-find"

@@ -1,0 +1,23 @@
+# Fresh-machine playground WITH a display: run wezterm (and the whole shell
+# stack) inside the container, viewed from your browser via noVNC.
+FROM ubuntu:24.04
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      zsh git sudo curl ca-certificates python3 \
+      xvfb x11vnc novnc websockify openbox dbus-x11 \
+      fontconfig \
+ && rm -rf /var/lib/apt/lists/* \
+ && useradd -m -s /bin/zsh tester \
+ && echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
+# MesloLGS NF — the font powerlevel10k expects
+RUN mkdir -p /usr/local/share/fonts/meslo && cd /usr/local/share/fonts/meslo \
+ && for v in Regular Bold Italic "Bold%20Italic"; do \
+      curl -fsSL "https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20$v.ttf" -o "MesloLGS NF $v.ttf"; \
+    done && fc-cache -f
+COPY --chown=tester:tester . /home/tester/dotfiles
+ARG TARGETARCH=arm64
+COPY --chown=tester:tester dist/dotfiles-linux-${TARGETARCH} /usr/local/bin/dotfiles
+USER tester
+WORKDIR /home/tester/dotfiles
+ENV HOME=/home/tester DOTFILES=/home/tester/dotfiles DISPLAY=:0
+EXPOSE 6080
+ENTRYPOINT ["/bin/bash", "test/docker/try-gui.sh"]
