@@ -6,7 +6,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// DEV — DEV. The house brand.
+// DEV — the house brand.
 const devArt = `
 ██████╗  ███████╗ ██╗   ██╗
 ██╔══██╗ ██╔════╝ ██║   ██║

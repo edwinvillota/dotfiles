@@ -1,4 +1,4 @@
--- Dashboard header: DEV — DEV.
+-- Dashboard header: DEV.
 return {
   {
     "folke/snacks.nvim",
