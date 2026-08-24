@@ -14,7 +14,7 @@ func TestSetupWizardFlow(t *testing.T) {
 	s := NewSetup(m, st)
 	s.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
 	v := stripANSI(s.View())
-	if !strings.Contains(v, "██") || !strings.Contains(v, "d o t f i l e s") || !strings.Contains(v, "DEV") {
+	if !strings.Contains(v, "██") || !strings.Contains(v, "d o t f i l e s") {
 		t.Fatal("welcome screen missing DEV banner")
 	}
 	pressS := func(keys ...string) {

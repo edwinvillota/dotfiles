@@ -19,8 +19,7 @@ const devArt = `
 func Banner(width int) string {
 	art := lipgloss.NewStyle().Foreground(cGold).Bold(true).Render(strings.TrimPrefix(devArt, "\n"))
 	sub := lipgloss.NewStyle().Foreground(cBlue).Render("· d o t f i l e s ·")
-	tag := sDim.Render("")
-	b := lipgloss.JoinVertical(lipgloss.Center, art, "", sub, tag)
+	b := lipgloss.JoinVertical(lipgloss.Center, art, "", sub)
 	if width > 0 {
 		return lipgloss.PlaceHorizontal(width, lipgloss.Center, b)
 	}
