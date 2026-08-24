@@ -3,3 +3,9 @@
 /dist/
 state.toml
 zsh/config/databases.zsh
+# belt and braces: these can never be committed even if the manifest changes
+ssh/*
+!ssh/config
+!ssh/*.pub
+gh/hosts.yml
+lazysql/history
