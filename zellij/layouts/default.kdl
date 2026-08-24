@@ -1,4 +1,8 @@
 layout {
+    tab name="agent" {
+      pane
+    }
+
     tab name="nvim" focus=true {
         pane
     }

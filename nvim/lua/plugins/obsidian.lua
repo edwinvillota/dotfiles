@@ -24,13 +24,9 @@ return {
         path = os.getenv("HOME") .. "/Documents/notes/dev",
       },
     },
-    {
-      picker = {
-        name = "snacks.pick",
-      },
-    },
-    completion = {
-      blink = true,
+    legacy_commands = false,
+    picker = {
+      name = "snacks.pick",
     },
   },
 }

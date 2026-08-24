@@ -1,0 +1,16 @@
+# lazysql configuration.
+# Connections are passed on the command line (see ~/.config/zsh/db-clients.zsh),
+# so only keybindings live here.
+
+[keymap.Home]
+# Default is Ctrl-_ (ASCII 0x1F), which many terminal/layout combinations
+# never emit. Ctrl-Y is unused elsewhere in lazysql and passes through
+# zellij's locked mode untouched.
+ToggleQueryHistory = "Ctrl-Y"
+
+[keymap.Editor]
+# Default is Ctrl-Space, which maps to tcell.KeyCtrlSpace (ASCII NUL, 0x00).
+# Whether a terminal actually emits 0x00 for Ctrl+Space varies by emulator and
+# keyboard layout, so bind a plain control key instead. Ctrl-O is unused
+# elsewhere in lazysql.
+OpenInExternalEditor = "Ctrl-O"

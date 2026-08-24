@@ -1,0 +1,97 @@
+# Ayu Dark — palette from ~/.local/share/nvim/lazy/ayu/lua/ayu/colors.lua
+# (the plain `dark` variant; colors/ayu-dark.lua forces mirage = false)
+#
+# app.overall.bg is REQUIRED, not cosmetic: yazi's image_erase() paints spaces
+# in this colour to clear an image before drawing a modal over it. Leaving it
+# unset (the upstream default) makes previews bleed through dialogs.
+
+[app]
+overall = { bg = "#0B0E14" }
+
+[mgr]
+cwd = "#39BAE6"
+
+hovered = { bg = "#1B3A5B", bold = true }
+
+find_keyword  = { fg = "#E6B450", bold = true }
+find_position = { fg = "#D2A6FF", bold = true }
+
+marker_copied   = { fg = "#7FD962", bg = "#7FD962" }
+marker_cut      = { fg = "#F26D78", bg = "#F26D78" }
+marker_marked   = { fg = "#39BAE6", bg = "#39BAE6" }
+marker_selected = { fg = "#E6B450", bg = "#E6B450" }
+
+count_copied   = { fg = "#0B0E14", bg = "#7FD962" }
+count_cut      = { fg = "#0B0E14", bg = "#F26D78" }
+count_selected = { fg = "#0B0E14", bg = "#E6B450" }
+
+border_symbol = "│"
+border_style  = { fg = "#3C414A" }
+
+[status]
+overall = { bg = "#0B0E14" }
+
+perm_sep   = { fg = "#636A72" }
+perm_type  = { fg = "#AAD94C" }
+perm_read  = { fg = "#E6B450" }
+perm_write = { fg = "#F07178" }
+perm_exec  = { fg = "#95E6CB" }
+
+[input]
+border   = { fg = "#59C2FF" }
+title    = {}
+value    = {}
+selected = { bg = "#1B3A5B" }
+
+[pick]
+border   = { fg = "#59C2FF" }
+active   = { fg = "#E6B450", bold = true }
+inactive = {}
+
+[which]
+mask            = { bg = "#0F131A" }
+cand            = { fg = "#95E6CB" }
+rest            = { fg = "#636A72" }
+desc            = { fg = "#D2A6FF" }
+separator       = "  "
+separator_style = { fg = "#3C414A" }
+
+[tasks]
+border  = { fg = "#59C2FF" }
+title   = {}
+hovered = { fg = "#E6B450", underline = true }
+
+[notify]
+title_info  = { fg = "#95E6CB" }
+title_warn  = { fg = "#FF8F40" }
+title_error = { fg = "#D95757" }
+
+[confirm]
+border  = { fg = "#59C2FF", bg = "#0B0E14" }
+title   = { fg = "#59C2FF", bg = "#0B0E14" }
+body    = { bg = "#0B0E14" }
+list    = { fg = "#95E6CB", bg = "#0B0E14" }
+
+[filetype]
+rules = [
+  # Media
+  { mime = "**/image/*", fg = "#D2A6FF" },
+  { mime = "**/{audio,video}/*", fg = "#E6B450" },
+  # Archives / packages
+  { mime = "**/application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", fg = "#FF8F40" },
+  { url = "*.{apk,ipa,dmg,pkg}", fg = "#FF8F40" },
+  # Documents
+  { mime = "**/application/{pdf,doc,rtf}", fg = "#F07178" },
+  { url = "*.{md,txt,rst}", fg = "#BFBDB6" },
+  # Code / config
+  { url = "*.{js,ts,tsx,jsx,lua,py,go,rs,rb,sh,zsh}", fg = "#AAD94C" },
+  { url = "*.{json,yaml,yml,toml,kdl,ini,conf}", fg = "#95E6CB" },
+  # Virtual file system
+  { mime = "vfs/{absent,stale}", fg = "#565B66" },
+  # Special
+  { url = "*", is = "orphan", fg = "#D95757" },
+  { url = "*", is = "exec", fg = "#AAD94C" },
+  # Fallback
+  { url = "*/", fg = "#59C2FF" },
+  { url = "*", fg = "#BFBDB6" }
+]

@@ -1,0 +1,12 @@
+.DS_Store
+/bin/
+/dist/
+state.toml
+zsh/config/databases.zsh
+zsh/config/mec.zsh
+# belt and braces: these can never be committed even if the manifest changes
+ssh/*
+!ssh/config
+!ssh/*.pub
+gh/hosts.yml
+lazysql/history

@@ -1,0 +1,33 @@
+Include /Users/edwinvillota/.colima/ssh_config
+
+# Host github.com
+#   HostName github.com
+#   AddKeysToAgent yes
+#   UseKeychain yes
+#   IdentityFile ~/.ssh/dev
+
+Host github-mecbpo.com
+  HostName github.com
+  AddKeysToAgent yes
+  UseKeychain yes
+  IdentityFile ~/.ssh/mecbpo
+
+# Host github.com
+#  AddKeysToAgent yes
+#  UseKeychain yes
+#  IdentityFile ~/.ssh/tres-homes
+
+Host bitbucket.org
+ AddKeysToAgent yes
+ UseKeychain yes
+ IdentityFile ~/.ssh/retos-io
+
+Host mic-server
+  HostName ssh.83748393.xyz
+  ProxyCommand /opt/homebrew/bin/cloudflared access ssh --hostname %h
+
+Host mec
+  HostName ssh.mecbpo.com
+  User analisis-mec
+  IdentityFile ~/.ssh/mec
+  ProxyCommand /opt/homebrew/bin/cloudflared access ssh --hostname %h
