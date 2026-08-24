@@ -90,6 +90,19 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
   terminal's ANSI palette, which the theme already switches; `bat` runs with
   `--theme=ansi` for the same reason.
 
+## Known issues
+
+- **Endless screen blinking in zellij after opening a pane** (`Ctrl+g p n`),
+  persisting even after the pane is closed: caused by a bad `zjstatus.wasm`
+  build (the one installed 2026-08-22), which fights zellij over resizes on
+  every pane-count change — see
+  [dj95/zjstatus#174](https://github.com/dj95/zjstatus/issues/174). It is not
+  a wezterm problem (upgrading wezterm only changes the flicker speed).
+  Fix: restore a known-good plugin (April 2025 build works), clear the plugin
+  cache (`~/Library/Caches/org.Zellij-Contributors.Zellij` on macOS,
+  `~/.cache/zellij` on Linux), and restart all zellij sessions. If it recurs,
+  set `hide_frame_for_single_pane "false"` in `zellij/layouts/default.kdl`.
+
 ## TUI keys
 
 `j/k` move · `gg`/`G` · `l`/`h` expand/collapse · `Space` toggle · `a` all ·
