@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -22,11 +23,49 @@ const (
 type Unit struct {
 	Name     string   `toml:"-"`
 	Src      string   `toml:"src"`
-	Dest     string   `toml:"dest"`
+	Dest     Dest     `toml:"dest"`
 	Mode     Mode     `toml:"mode"`
 	Granular []string `toml:"granular"`
 	Ignore   []string `toml:"ignore"`
 	Secret   []string `toml:"secret"`
+	// Only, if set, is an allowlist: paths not matching are ignored.
+	Only []string `toml:"only"`
+}
+
+// Dest is either a single path or a per-OS table {darwin = "...", linux = "..."}.
+type Dest struct {
+	All   string
+	PerOS map[string]string
+}
+
+func (d *Dest) UnmarshalTOML(v any) error {
+	switch x := v.(type) {
+	case string:
+		d.All = x
+	case map[string]any:
+		d.PerOS = map[string]string{}
+		for k, val := range x {
+			s, ok := val.(string)
+			if !ok {
+				return fmt.Errorf("dest.%s must be a string", k)
+			}
+			d.PerOS[k] = s
+		}
+	default:
+		return fmt.Errorf("dest must be a string or table")
+	}
+	return nil
+}
+
+// For returns the path for the given GOOS ("" if unsupported there).
+func (d Dest) For(goos string) string {
+	if d.All != "" {
+		return d.All
+	}
+	if p, ok := d.PerOS[goos]; ok {
+		return p
+	}
+	return d.PerOS["default"]
 }
 
 type Profile struct {
@@ -50,6 +89,7 @@ type Manifest struct {
 
 	Root    string `toml:"-"` // directory containing the manifest
 	Home    string `toml:"-"`
+	GOOS    string `toml:"-"`
 	secrets []*regexp.Regexp
 }
 
@@ -64,6 +104,7 @@ func Load(path, home string) (*Manifest, error) {
 	}
 	m.Root = filepath.Dir(abs)
 	m.Home = home
+	m.GOOS = runtime.GOOS
 	for name, u := range m.Units {
 		u.Name = name
 		if u.Mode == "" {
@@ -72,7 +113,7 @@ func Load(path, home string) (*Manifest, error) {
 		if u.Mode != ModeSync && u.Mode != ModeBackupOnly {
 			return nil, fmt.Errorf("unit %s: unknown mode %q", name, u.Mode)
 		}
-		if u.Src == "" || u.Dest == "" {
+		if u.Src == "" || u.Dest.For(runtime.GOOS) == "" {
 			return nil, fmt.Errorf("unit %s: src and dest are required", name)
 		}
 	}
@@ -102,7 +143,7 @@ func (m *Manifest) UnitNames() []string {
 func (m *Manifest) SrcPath(u *Unit) string { return filepath.Join(m.Root, u.Src) }
 
 // DestPath is the absolute live path of the unit, with ~ expanded.
-func (m *Manifest) DestPath(u *Unit) string { return expand(u.Dest, m.Home) }
+func (m *Manifest) DestPath(u *Unit) string { return expand(u.Dest.For(m.GOOS), m.Home) }
 
 func expand(p, home string) string {
 	if p == "~" {
@@ -151,7 +192,26 @@ func (u *Unit) IsIgnored(rel string) bool { return Match(u.Ignore, rel) }
 
 // IsIgnored applies global + unit ignores.
 func (m *Manifest) IsIgnored(u *Unit, rel string) bool {
-	return Match(m.Global.Ignore, rel) || u.IsIgnored(rel)
+	if Match(m.Global.Ignore, rel) || u.IsIgnored(rel) {
+		return true
+	}
+	// Allowlist: a file is kept only if it matches; directories are always
+	// descended so nested matches can be found.
+	if len(u.Only) > 0 && !Match(u.Only, rel) && !u.dirOnPathToOnly(rel) {
+		return true
+	}
+	return false
+}
+
+// dirOnPathToOnly reports whether rel could be a directory prefix of an
+// allowlisted pattern (so Snapshot keeps walking into it).
+func (u *Unit) dirOnPathToOnly(rel string) bool {
+	for _, p := range u.Only {
+		if strings.HasPrefix(p, rel+"/") {
+			return true
+		}
+	}
+	return false
 }
 func (u *Unit) IsSecret(rel string) bool { return Match(u.Secret, rel) }
 

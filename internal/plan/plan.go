@@ -142,7 +142,12 @@ func Build(m *manifest.Manifest, opts Options) (*Plan, error) {
 
 func planUnit(m *manifest.Manifest, u *manifest.Unit, opts Options) ([]Action, error) {
 	repo, live := m.SrcPath(u), m.DestPath(u)
-	skip := func(rel string, isDir bool) bool { return m.IsIgnored(u, rel) }
+	skip := func(rel string, isDir bool) bool {
+		if isDir && len(u.Only) > 0 {
+			return manifest.Match(m.Global.Ignore, rel) || u.IsIgnored(rel)
+		}
+		return m.IsIgnored(u, rel)
+	}
 	repoSnap, err := fsx.Snapshot(repo, skip)
 	if err != nil {
 		return nil, err

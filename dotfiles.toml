@@ -53,3 +53,65 @@ exclude = ["zsh/google-cloud.zsh", "nvim/lua/plugins/obsidian.lua"]
 [secrets]
 # extra regexes checked by `dotfiles check` on every file that would be committed
 patterns = ['(?i)password\s*=', 'PGPASSWORD', 'AKIA[0-9A-Z]{16}', '-----BEGIN [A-Z ]*PRIVATE KEY', '(?i)api[_-]?key\s*[:=]']
+
+# --- SSH: keep the structure, never the keys -------------------------------
+# Allowlist only. Private keys, known_hosts and the agent socket dir are never
+# seen by the planner. Note: `UseKeychain` in config is macOS-only; the install
+# step will prepend `IgnoreUnknown UseKeychain` on Linux so ssh doesn't error.
+[unit.ssh]
+src = "ssh"
+dest = "~/.ssh"
+only = ["config", "*.pub"]
+granular = ["*.pub"]
+
+# --- TUIs ------------------------------------------------------------------
+[unit.gh]
+src = "gh"
+dest = "~/.config/gh"
+only = ["config.yml"]        # hosts.yml holds the oauth token
+secret = ["hosts.yml"]
+
+[unit.gh-dash]
+src = "gh-dash"
+dest = "~/.config/gh-dash"
+ignore = ["*.bak"]
+
+[unit.lazydocker]
+src = "lazydocker"
+dest = { darwin = "~/Library/Application Support/lazydocker", linux = "~/.config/lazydocker" }
+
+[unit.lazysql]
+src = "lazysql"
+dest = { darwin = "~/Library/Application Support/lazysql", linux = "~/.config/lazysql" }
+only = ["config.toml", "saved_queries/*"]   # `history` stays local
+
+[unit.visidata]
+src = "visidata/.visidatarc"
+dest = "~/.visidatarc"
+
+[unit.colima]
+src = "colima"
+dest = "~/.colima"
+only = ["default/colima.yaml"]   # _store/ and ssh_config are machine-generated
+
+[unit.yazi]
+src = "yazi"
+dest = "~/.config/yazi"
+
+[unit.btop]
+src = "btop"
+dest = "~/.config/btop"
+
+[unit.atuin]
+src = "atuin"
+dest = "~/.config/atuin"
+only = ["config.toml"]
+
+[unit.git]
+src = "git"
+dest = "~/.config/git"
+
+[unit.gitconfig]
+src = "git/.gitconfig"
+dest = "~/.gitconfig"
+mode = "backup-only"   # user/email differ per machine; seed only if absent

@@ -37,6 +37,15 @@ src = "zsh/.zshrc"
 dest = "~/.zshrc"
 mode = "backup-only"
 
+[unit.ssh]
+src = "ssh"
+dest = "~/.ssh"
+only = ["config", "*.pub"]
+
+[unit.lazysql]
+src = "lazysql"
+dest = { darwin = "~/Library/Application Support/lazysql", linux = "~/.config/lazysql" }
+
 [profile.work]
 exclude = ["nvim/lua/plugins/obsidian.lua"]
 `)
@@ -57,6 +66,10 @@ exclude = ["nvim/lua/plugins/obsidian.lua"]
 	write(t, filepath.Join(home, ".config/zsh/nvm.zsh"), "same")
 	write(t, filepath.Join(home, ".config/zsh/databases.zsh"), "PGPASSWORD=x")
 	write(t, filepath.Join(home, ".zshrc"), "live-zshrc")
+	write(t, filepath.Join(home, ".ssh/config"), "Host x")
+	write(t, filepath.Join(home, ".ssh/id_ed25519"), "PRIVATE")
+	write(t, filepath.Join(home, ".ssh/id_ed25519.pub"), "PUB")
+	write(t, filepath.Join(home, ".ssh/known_hosts"), "kh")
 
 	m, err := manifest.Load(filepath.Join(root, "dotfiles.toml"), home)
 	if err != nil {
@@ -89,6 +102,8 @@ func TestBackup(t *testing.T) {
 		"zsh:nvm.zsh":                   OpNone,
 		"zsh:databases.zsh":             OpSkip,
 		"zshrc:":                        OpUpdate,
+		"ssh:config":                    OpCreate,
+		"ssh:id_ed25519.pub":            OpCreate,
 	}
 	for k, w := range want {
 		if got[k] != w {
@@ -100,6 +115,12 @@ func TestBackup(t *testing.T) {
 	}
 	if _, ok := got["nvim:.claude/x"]; ok {
 		t.Error("ignored dir leaked into plan")
+	}
+	if _, ok := got["ssh:id_ed25519"]; ok {
+		t.Error("private key leaked into plan")
+	}
+	if _, ok := got["ssh:known_hosts"]; ok {
+		t.Error("non-allowlisted ssh file leaked into plan")
 	}
 	if len(got) != len(want) {
 		t.Errorf("unexpected actions: %v", got)
@@ -174,5 +195,18 @@ func TestSymlinkInstall(t *testing.T) {
 	p, _ = Build(m, Options{Direction: Install, Symlink: true, Units: []string{"nvim"}})
 	if got := ops(p); got["nvim:init.lua"] != OpNone {
 		t.Errorf("linked file should be OpNone, got %v", got["nvim:init.lua"])
+	}
+}
+
+func TestPerOSDest(t *testing.T) {
+	m := fixture(t)
+	u := m.Units["lazysql"]
+	m.GOOS = "darwin"
+	if got := m.DestPath(u); got != filepath.Join(m.Home, "Library/Application Support/lazysql") {
+		t.Errorf("darwin dest = %q", got)
+	}
+	m.GOOS = "linux"
+	if got := m.DestPath(u); got != filepath.Join(m.Home, ".config/lazysql") {
+		t.Errorf("linux dest = %q", got)
 	}
 }
