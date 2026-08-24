@@ -10,12 +10,15 @@ ignore = [".DS_Store", ".git/", ".gitkeep"]
 src = "nvim"
 dest = "~/.config/nvim"
 granular = ["lua/plugins/*.lua", "lua/config/*.lua"]
-ignore = ["*.pyprof", "*.bak*", "lazy-lock.backup", ".claude/", "spell/*.spl"]
+# lua/config/theme-active.lua is machine state written by `dotfiles theme`
+ignore = ["*.pyprof", "*.bak*", "lazy-lock.backup", ".claude/", "spell/*.spl", "lua/config/theme-active.lua"]
 
 [unit.zsh]
 src = "zsh/config"
 dest = "~/.config/zsh"
 granular = ["*.zsh"]
+# 00-theme.zsh is machine state written by `dotfiles theme`
+ignore = ["00-theme.zsh"]
 # secret files are stored as <name>.template with values blanked (see README)
 secret = ["databases.zsh", "mec.zsh"]
 
@@ -36,6 +39,8 @@ ignore = ["*.bak*"]
 [unit.wezterm]
 src = "wezterm"
 dest = "~/.config/wezterm"
+# theme.lua is machine state written by `dotfiles theme`
+ignore = ["theme.lua"]
 
 [unit.omz-custom]
 src = "oh-my-zsh/custom"

@@ -11,7 +11,8 @@ import (
 
 type State struct {
 	Profile  string   `toml:"profile"`
-	Disabled []string `toml:"disabled"` // selection keys ("unit" or "unit/rel") turned off
+	Theme    string   `toml:"theme,omitempty"` // active theme (see themes/); empty = theme.Default
+	Disabled []string `toml:"disabled"`        // selection keys ("unit" or "unit/rel") turned off
 	Symlink  bool     `toml:"symlink"`
 	path     string
 }

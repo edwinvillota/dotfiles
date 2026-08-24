@@ -1,0 +1,16 @@
+// Jellybeans (https://terminalcolors.com/themes/jellybeans/default/) — generated from themes/jellybeans/palette.toml, do not edit by hand
+themes {
+    jellybeans {
+        fg "#dedede"
+        bg "#121212"
+        black "#929292"
+        red "#e27373"
+        green "#94b979"
+        yellow "#ffba7b"
+        blue "#97bedc"
+        magenta "#e1c0fa"
+        cyan "#00988e"
+        white "#dedede"
+        orange "#ffba7b"
+    }
+}

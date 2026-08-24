@@ -1,0 +1,39 @@
+# GitHub Dark Colorblind — palette fetched verbatim from terminalcolors.com
+# (https://terminalcolors.com/themes/github/dark-colorblind/, Alacritty export)
+
+name = "github-dark-colorblind"
+label = "GitHub Dark Colorblind"
+source = "https://terminalcolors.com/themes/github/dark-colorblind/"
+# nvim colorscheme; the plugin providing it is declared in nvim/lua/plugins/colorscheme.lua
+nvim = "github_dark_colorblind"
+[primary]
+foreground = "#c9d1d9"
+background = "#010409"
+
+[cursor]
+text = "#010409"
+cursor = "#c9d1d9"
+
+[selection]
+text = "#c9d1d9"
+background = "#264f78"
+
+[normal]
+black = "#484f58"
+red = "#ec8e2c"
+green = "#58a6ff"
+yellow = "#d29922"
+blue = "#58a6ff"
+magenta = "#bc8cff"
+cyan = "#39c5cf"
+white = "#b1bac4"
+
+[bright]
+black = "#6e7681"
+red = "#fdac54"
+green = "#79c0ff"
+yellow = "#e3b341"
+blue = "#79c0ff"
+magenta = "#d2a8ff"
+cyan = "#56d4dd"
+white = "#ffffff"

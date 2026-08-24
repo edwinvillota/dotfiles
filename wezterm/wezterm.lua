@@ -107,8 +107,17 @@ config.color_schemes = {
 	},
 }
 
--- Color scheme
+-- Color scheme. `dotfiles theme <name>` writes theme.lua next to this file
+-- (machine-local, never synced); wezterm reloads it live. Without it, the
+-- built-in Ayu Dark above stays active (the default theme).
 config.color_scheme = "Ayu dark"
+local theme_file = wezterm.config_dir .. "/theme.lua"
+wezterm.add_to_config_reload_watch_list(theme_file)
+local ok, theme = pcall(dofile, theme_file)
+if ok and type(theme) == "table" and theme.name and theme.colors then
+	config.color_schemes[theme.name] = theme.colors
+	config.color_scheme = theme.name
+end
 
 -- Background with transparency
 config.window_background_opacity = 1

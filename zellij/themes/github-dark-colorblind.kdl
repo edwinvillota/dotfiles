@@ -1,0 +1,16 @@
+// GitHub Dark Colorblind (https://terminalcolors.com/themes/github/dark-colorblind/) — generated from themes/github-dark-colorblind/palette.toml, do not edit by hand
+themes {
+    github-dark-colorblind {
+        fg "#c9d1d9"
+        bg "#010409"
+        black "#484f58"
+        red "#ec8e2c"
+        green "#58a6ff"
+        yellow "#d29922"
+        blue "#58a6ff"
+        magenta "#bc8cff"
+        cyan "#39c5cf"
+        white "#b1bac4"
+        orange "#d29922"
+    }
+}

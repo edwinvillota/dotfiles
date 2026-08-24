@@ -1,0 +1,16 @@
+// Kanagawa Wave (https://terminalcolors.com/themes/kanagawa/wave/) — generated from themes/kanagawa-wave/palette.toml, do not edit by hand
+themes {
+    kanagawa-wave {
+        fg "#dcd7ba"
+        bg "#1f1f28"
+        black "#16161d"
+        red "#c34043"
+        green "#76946a"
+        yellow "#c0a36e"
+        blue "#7e9cd8"
+        magenta "#957fb8"
+        cyan "#6a9589"
+        white "#c8c093"
+        orange "#c0a36e"
+    }
+}
