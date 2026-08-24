@@ -7,6 +7,8 @@ repo in sync in **both directions**, on macOS and Linux, with dry-runs, backups 
 rollback.
 
 ```
+dotfiles guide           # plain-English tour of the tool — start here
+dotfiles setup           # guided fresh-machine walkthrough (profile → tools → configs)
 dotfiles                 # TUI (vim keys). Toggle units/files, preview, diff, run.
 dotfiles backup  [-n]    # live  -> repo
 dotfiles install [-n]    # repo  -> live   (never overwrites ~/.zshrc or secrets)
@@ -23,11 +25,11 @@ dotfiles profile work    # personal (branch main) | work (branch office)
 ```sh
 curl -fsSL https://raw.githubusercontent.com/edwinvillota/dotfiles/main/bootstrap.sh | bash
 export DOTFILES=~/.dotfiles
-dotfiles profile personal   # or work
-dotfiles deps               # Homebrew is bootstrapped on Linux when needed
-dotfiles install
+dotfiles setup              # guided: profile → tools → configs, all confirmed first
 ```
 Only `git` and `curl` are required up front; the tool is a single static binary.
+To rehearse a fresh install first: `make try` opens a throwaway Ubuntu container
+with nothing installed where you can run `dotfiles setup` end to end.
 
 ## How it works
 
@@ -67,6 +69,8 @@ Re-running is a no-op. Per-machine choices (profile, toggles, symlink mode) live
 
 ```sh
 make unit               # go vet + tests (planner, redactor, deps table, TUI, …)
+make try                # interactive fresh-machine container (rehearse `dotfiles setup`)
+make install-bin        # install the binary to ~/.local/bin
 make test               # full install/uninstall cycle in a throwaway Ubuntu container
 E2E_NET=1 make test     # + real apt installs and git clones
 E2E_BREW=1 make test    # + Linuxbrew bootstrap (slow)

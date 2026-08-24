@@ -80,6 +80,16 @@ check 'grep -q "export HOST=h # public" "$SCRATCH/zsh/config/databases.zsh.templ
 echo 'export API_KEY=sk-live-123' > "$SCRATCH/zsh/config/oops.zsh"
 ( cd "$SCRATCH" && ! dotfiles check >/dev/null 2>&1 ); check '[ $? = 0 ]' "check FAILS on leaked secret"
 
+step "setup wizard (scripted answers: profile=personal, skip tools, apply configs)"
+rm -rf "$H/.config/dotfiles"
+out=$(printf 'personal\nn\ny\n' | dotfiles setup 2>&1)
+check 'echo "$out" | grep -q "step 1 · profile"' "wizard runs step 1"
+check 'grep -q "personal" "$H/.config/dotfiles/state.toml"' "profile persisted"
+check 'echo "$out" | grep -q "skipped — run .dotfiles deps"' "tool install can be declined"
+check '[ -f "$H/.config/nvim/init.lua" ]' "configs applied from wizard"
+check 'echo "$out" | grep -q "dotfiles uninstall"' "wizard explains rollback"
+dotfiles uninstall >/dev/null 2>&1
+
 step "deps: resolution on Linux/apt (dry-run)"
 out=$(dotfiles deps --dry-run 2>&1)
 check 'echo "$out" | grep -q "platform: linux/.* ubuntu"' "platform detected as linux/ubuntu"

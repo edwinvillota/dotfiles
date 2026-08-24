@@ -29,7 +29,13 @@ var version = "dev"
 func usage() {
 	fmt.Fprint(os.Stderr, `dotfiles `+version+` — sync live config <-> repo
 
+Run 'dotfiles guide' for a plain-English tour, or 'dotfiles setup' for a
+guided fresh-machine install.
+
 Usage:
+  dotfiles          (no command)                                 open the TUI
+  dotfiles setup                                                 guided install for a fresh machine
+  dotfiles guide                                                 explain the tool and each command
   dotfiles backup   [--dry-run] [--profile P] [--unit U ...]   live -> repo
   dotfiles install  [--dry-run] [--profile P] [--unit U ...] [--symlink] [--prune] repo -> live
   dotfiles deps     [--dry-run] [--core|--extra] [--only NAME ...]  install missing tools
@@ -79,6 +85,10 @@ func main() {
 	}
 	if cmd == "-h" || cmd == "--help" || cmd == "help" {
 		usage()
+		return
+	}
+	if cmd == "guide" {
+		printGuide()
 		return
 	}
 	if cmd == "version" {
@@ -155,6 +165,8 @@ func main() {
 		err = c.profileCmd(positional)
 	case "tui":
 		err = c.tui()
+	case "setup":
+		err = c.setup()
 	default:
 		usage()
 		os.Exit(2)
