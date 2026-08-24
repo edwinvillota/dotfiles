@@ -16,7 +16,8 @@ ignore = ["*.pyprof", "*.bak*", "lazy-lock.backup", ".claude/", "spell/*.spl"]
 src = "zsh/config"
 dest = "~/.config/zsh"
 granular = ["*.zsh"]
-secret = ["databases.zsh"]
+# secret files are stored as <name>.template with values blanked (see README)
+secret = ["databases.zsh", "mec.zsh"]
 
 [unit.zshrc]
 src = "zsh/.zshrc"
@@ -52,7 +53,10 @@ exclude = ["zsh/google-cloud.zsh", "nvim/lua/plugins/obsidian.lua"]
 
 [secrets]
 # extra regexes checked by `dotfiles check` on every file that would be committed
-patterns = ['(?i)password\s*=', 'PGPASSWORD', 'AKIA[0-9A-Z]{16}', '-----BEGIN [A-Z ]*PRIVATE KEY', '(?i)api[_-]?key\s*[:=]']
+patterns = [
+  '(?i)(pwd|passwd|password|pass|token|secret|psk|api[_-]?key)[a-z0-9_]*\s*[:=]\s*\S',
+  'PGPASSWORD', 'AKIA[0-9A-Z]{16}', '-----BEGIN [A-Z ]*PRIVATE KEY', '://[^/:@\s]+:[^@\s]+@',
+]
 
 # --- SSH: keep the structure, never the keys -------------------------------
 # Allowlist only. Private keys, known_hosts and the agent socket dir are never

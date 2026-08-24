@@ -173,6 +173,9 @@ func printPlan(p *plan.Plan) {
 		} else if a.Backup {
 			line += "  [backup]"
 		}
+		if a.Redact && a.Op != plan.OpSkip {
+			line += "  [secret → template]"
+		}
 		fmt.Println(line)
 	}
 	cr, up, de, li, sk := p.Counts()

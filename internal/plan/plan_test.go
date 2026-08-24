@@ -3,6 +3,7 @@ package plan
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/edwinvillota/dotfiles/internal/manifest"
@@ -100,7 +101,7 @@ func TestBackup(t *testing.T) {
 		"nvim:lua/plugins/csv.lua":      OpCreate,
 		"nvim:lua/plugins/old.lua":      OpDelete,
 		"zsh:nvm.zsh":                   OpNone,
-		"zsh:databases.zsh":             OpSkip,
+		"zsh:databases.zsh":             OpCreate, // -> template
 		"zshrc:":                        OpUpdate,
 		"ssh:config":                    OpCreate,
 		"ssh:id_ed25519.pub":            OpCreate,
@@ -108,6 +109,13 @@ func TestBackup(t *testing.T) {
 	for k, w := range want {
 		if got[k] != w {
 			t.Errorf("%s: got %v want %v", k, got[k], w)
+		}
+	}
+	for _, a := range p.Actions {
+		if a.Rel == "databases.zsh" {
+			if !a.Redact || !strings.HasSuffix(a.To, ".template") {
+				t.Errorf("secret must go to a template: %+v", a)
+			}
 		}
 	}
 	if _, ok := got["nvim:lazy.bak"]; ok {
@@ -208,5 +216,30 @@ func TestPerOSDest(t *testing.T) {
 	m.GOOS = "linux"
 	if got := m.DestPath(u); got != filepath.Join(m.Home, ".config/lazysql") {
 		t.Errorf("linux dest = %q", got)
+	}
+}
+
+func TestSecretInstall(t *testing.T) {
+	m := fixture(t)
+	tmpl := filepath.Join(m.Root, "zsh/config/databases.zsh.template")
+	write(t, tmpl, "export X=\n")
+	// live exists -> never overwritten
+	p, _ := Build(m, Options{Direction: Install, Units: []string{"zsh"}})
+	if ops(p)["zsh:databases.zsh"] != OpSkip {
+		t.Error("must not overwrite live secret")
+	}
+	if _, ok := ops(p)["zsh:databases.zsh.template"]; ok {
+		t.Error("template must not be installed as a regular file")
+	}
+	os.Remove(filepath.Join(m.Home, ".config/zsh/databases.zsh"))
+	p, _ = Build(m, Options{Direction: Install, Units: []string{"zsh"}})
+	var a Action
+	for _, x := range p.Actions {
+		if x.Rel == "databases.zsh" {
+			a = x
+		}
+	}
+	if a.Op != OpCreate || !a.Redact || a.From != tmpl {
+		t.Errorf("expected create-from-template, got %+v", a)
 	}
 }

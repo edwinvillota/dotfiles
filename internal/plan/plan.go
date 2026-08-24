@@ -2,13 +2,16 @@
 package plan
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/edwinvillota/dotfiles/internal/fsx"
 	"github.com/edwinvillota/dotfiles/internal/manifest"
+	"github.com/edwinvillota/dotfiles/internal/redact"
 )
 
 type Direction int
@@ -50,6 +53,9 @@ type Action struct {
 	To      string // absolute target path
 	Reason  string // for OpSkip
 	Backup  bool   // target exists and will be preserved before overwrite
+	// Redact: Backup writes a redacted template of From to To (a *.template
+	// path); Install copies the template To a new 0600 live file.
+	Redact bool
 }
 
 func (a Action) Key() string {
@@ -143,6 +149,9 @@ func Build(m *manifest.Manifest, opts Options) (*Plan, error) {
 func planUnit(m *manifest.Manifest, u *manifest.Unit, opts Options) ([]Action, error) {
 	repo, live := m.SrcPath(u), m.DestPath(u)
 	skip := func(rel string, isDir bool) bool {
+		if strings.HasSuffix(rel, redact.Suffix) {
+			return true
+		}
 		if isDir && len(u.Only) > 0 {
 			return manifest.Match(m.Global.Ignore, rel) || u.IsIgnored(rel)
 		}
@@ -181,6 +190,17 @@ func planUnit(m *manifest.Manifest, u *manifest.Unit, opts Options) ([]Action, e
 	for k := range dst {
 		all[k] = true
 	}
+	// Secret files exist in the repo only as templates, which the walk skips;
+	// enumerate them so install can create the live file from the template.
+	tmpls, _ := fsx.Snapshot(repo, func(rel string, isDir bool) bool {
+		return !isDir && !strings.HasSuffix(rel, redact.Suffix)
+	})
+	for k := range tmpls {
+		rel := strings.TrimSuffix(k, redact.Suffix)
+		if u.IsSecret(rel) {
+			all[rel] = true
+		}
+	}
 	rels := fsx.SortedKeys(all)
 
 	var out []Action
@@ -189,12 +209,12 @@ func planUnit(m *manifest.Manifest, u *manifest.Unit, opts Options) ([]Action, e
 			From: join(srcRoot, rel), To: join(dstRoot, rel)}
 		s, d := src[rel], dst[rel]
 		switch {
-		case u.IsSecret(rel):
-			a.Op, a.Reason = OpSkip, "secret"
 		case opts.Profile.Excluded(u.Name, rel):
 			a.Op, a.Reason = OpSkip, "excluded by profile"
 		case opts.Selected != nil && !opts.Selected[a.Key()]:
 			a.Op, a.Reason = OpSkip, "not selected"
+		case u.IsSecret(rel):
+			planSecret(&a, liveSnap[rel], nil, opts.Direction, join(repo, rel)+redact.Suffix, false)
 		case opts.Direction == Install && u.Mode == manifest.ModeBackupOnly && d != nil:
 			a.Op, a.Reason = OpSkip, "backup-only: live file exists"
 		case opts.Direction == Install && opts.Symlink:
@@ -239,4 +259,44 @@ func join(root, rel string) string {
 		return root
 	}
 	return filepath.Join(root, filepath.FromSlash(rel))
+}
+
+// planSecret handles a file the manifest marks secret. The repo only ever
+// holds a redacted template; the live file is only ever created, never
+// overwritten.
+func planSecret(a *Action, live, _ *fsx.Entry, dir Direction, tmpl string, _ bool) {
+	a.Redact = true
+	switch dir {
+	case Backup:
+		if live == nil {
+			a.Op, a.Reason = OpSkip, "secret: not present locally"
+			return
+		}
+		raw, err := os.ReadFile(live.Abs())
+		if err != nil {
+			a.Op, a.Reason = OpSkip, "secret: unreadable"
+			return
+		}
+		want := redact.Template(raw)
+		a.To = tmpl
+		have, err := os.ReadFile(tmpl)
+		switch {
+		case err != nil:
+			a.Op = OpCreate
+		case bytes.Equal(have, want):
+			a.Op = OpNone
+		default:
+			a.Op = OpUpdate
+		}
+	case Install:
+		if live != nil {
+			a.Op, a.Reason = OpSkip, "secret: live file exists (never overwritten)"
+			return
+		}
+		if _, err := os.Stat(tmpl); err != nil {
+			a.Op, a.Reason = OpSkip, "secret: no template in repo"
+			return
+		}
+		a.Op, a.From = OpCreate, tmpl
+	}
 }
