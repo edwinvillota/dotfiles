@@ -48,7 +48,9 @@ WM_VAR="/$ZELLIJ"
 WM_CMD="zellij"
 
 function start_if_needed() {
-    if [[ $- == *i* ]] && [[ -z "${WM_VAR#/}" ]] && [[ -t 1 ]]; then
+    # only exec into the WM when it is actually installed — a fresh machine
+    # without zellij must still get a working shell
+    if [[ $- == *i* ]] && [[ -z "${WM_VAR#/}" ]] && [[ -t 1 ]] && command -v "$WM_CMD" >/dev/null 2>&1; then
         exec $WM_CMD
     fi
 }
