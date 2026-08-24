@@ -48,6 +48,7 @@ exclude = ["nvim/lua/plugins/obsidian.lua"]
 		t.Fatal(err)
 	}
 	st, _ := state.Load(home)
+	st.Save() // state file exists -> TUI starts in normal mode, not first-run help
 	return m, st
 }
 

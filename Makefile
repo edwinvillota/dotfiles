@@ -2,7 +2,7 @@ BIN     := bin/dotfiles
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test unit release clean linux
+.PHONY: build test unit release clean linux try try-gui install-bin
 
 build:
 	go build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/dotfiles
@@ -25,6 +25,24 @@ DOCKER_ARCH ?= $(shell docker version --format '{{.Server.Arch}}' 2>/dev/null ||
 test: unit linux
 	docker build -q -f test/docker/Dockerfile --build-arg TARGETARCH=$(DOCKER_ARCH) -t dotfiles-e2e . >/dev/null
 	docker run --rm -e E2E_NET=$(E2E_NET) -e E2E_BREW=$(E2E_BREW) dotfiles-e2e
+
+# Interactive fresh-machine sandbox: a throwaway container with nothing
+# installed, to walk through `dotfiles setup` by hand.
+try: linux
+	docker build -q -f test/docker/Dockerfile --build-arg TARGETARCH=$(DOCKER_ARCH) -t dotfiles-e2e . >/dev/null
+	docker run --rm -it --entrypoint bash dotfiles-e2e test/docker/try.sh
+
+# Fresh-machine sandbox WITH a display: wezterm runs inside the container,
+# viewed at http://localhost:6080/vnc.html in your browser.
+try-gui: linux
+	docker build --build-arg TARGETARCH=$(DOCKER_ARCH) -f test/docker/Dockerfile.gui -t dotfiles-try-gui .
+	docker run --rm -it -p 6080:6080 dotfiles-try-gui
+
+# Install the binary for this machine into ~/.local/bin.
+install-bin: build
+	@mkdir -p $(HOME)/.local/bin
+	cp bin/dotfiles $(HOME)/.local/bin/dotfiles
+	@echo "installed $(HOME)/.local/bin/dotfiles ($$($(HOME)/.local/bin/dotfiles version))"
 
 clean:
 	rm -rf bin dist

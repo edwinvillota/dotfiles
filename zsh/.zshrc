@@ -15,7 +15,14 @@ if [[ $- == *i* ]]; then
     # Commands to run in interactive sessions can go here
 fi
 
-ZSH_THEME="powerlevel10k/powerlevel10k"
+# Use the oh-my-zsh copy of powerlevel10k when the clone exists (macOS setup);
+# otherwise rely on the brew-installed theme sourced above — avoids the
+# "theme not found" warning on a fresh machine.
+if [[ -d "$ZSH/custom/themes/powerlevel10k" ]]; then
+  ZSH_THEME="powerlevel10k/powerlevel10k"
+else
+  ZSH_THEME=""
+fi
 
 export LS_COLORS="di=38;5;67:ow=48;5;60:ex=38;5;132:ln=38;5;144:*.tar=38;5;180:*.zip=38;5;180:*.jpg=38;5;175:*.png=38;5;175:*.mp3=38;5;175:*.wav=38;5;175:*.txt=38;5;223:*.sh=38;5;132"
 if [[ "$(uname)" == "Darwin" ]]; then
@@ -48,7 +55,9 @@ WM_VAR="/$ZELLIJ"
 WM_CMD="zellij"
 
 function start_if_needed() {
-    if [[ $- == *i* ]] && [[ -z "${WM_VAR#/}" ]] && [[ -t 1 ]]; then
+    # only exec into the WM when it is actually installed — a fresh machine
+    # without zellij must still get a working shell
+    if [[ $- == *i* ]] && [[ -z "${WM_VAR#/}" ]] && [[ -t 1 ]] && command -v "$WM_CMD" >/dev/null 2>&1; then
         exec $WM_CMD
     fi
 }

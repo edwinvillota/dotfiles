@@ -174,3 +174,44 @@ func TestSymlinkInstallAndUninstall(t *testing.T) {
 		t.Error("original not restored after unlink")
 	}
 }
+
+func TestZellijPermissionSeeding(t *testing.T) {
+	m := setup(t)
+	write(t, filepath.Join(m.Root, "dotfiles.toml"), `
+[unit.zellij]
+src = "zellij"
+dest = "~/.config/zellij"
+`)
+	write(t, filepath.Join(m.Root, "zellij/plugins/zjstatus.wasm"), "wasm")
+	m2, err := manifest.Load(filepath.Join(m.Root, "dotfiles.toml"), m.Home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, _ := plan.Build(m2, plan.Options{Direction: plan.Install})
+	if _, err := Run(m2, p, Options{Confirm: yes}); err != nil {
+		t.Fatal(err)
+	}
+	perms := ZellijPermissionsPath(m2.Home)
+	b, err := os.ReadFile(perms)
+	if err != nil {
+		t.Fatalf("permissions not seeded: %v", err)
+	}
+	got := string(b)
+	if !strings.Contains(got, "zjstatus.wasm\"") || !strings.Contains(got, "RunCommands") {
+		t.Errorf("bad grants:\n%s", got)
+	}
+	// idempotent: re-run does not duplicate
+	p, _ = plan.Build(m2, plan.Options{Direction: plan.Install})
+	Run(m2, p, Options{Confirm: yes})
+	b2, _ := os.ReadFile(perms)
+	if string(b2) != got {
+		t.Error("re-install duplicated grants")
+	}
+	// uninstall removes the seeded file
+	if _, err := Uninstall(m2, nil, true, false, os.Stderr); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(perms); err == nil {
+		t.Error("uninstall should remove seeded permissions")
+	}
+}

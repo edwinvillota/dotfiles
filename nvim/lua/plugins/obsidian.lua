@@ -5,8 +5,8 @@ return {
   dependencies = {
     "nvim-lua/plenary.nvim",
   },
-  opts = {
-    workspaces = {
+  opts = function()
+    local workspaces = {
       {
         name = "random",
         path = os.getenv("HOME") .. "/Documents/notes/random",
@@ -23,10 +23,18 @@ return {
         name = "dev",
         path = os.getenv("HOME") .. "/Documents/notes/dev",
       },
-    },
-    legacy_commands = false,
-    picker = {
-      name = "snacks.pick",
-    },
-  },
+    }
+    -- The vault folders must exist or obsidian.nvim errors on startup.
+    -- Create them so a fresh machine works out of the box.
+    for _, ws in ipairs(workspaces) do
+      vim.fn.mkdir(ws.path, "p")
+    end
+    return {
+      workspaces = workspaces,
+      legacy_commands = false,
+      picker = {
+        name = "snacks.pick",
+      },
+    }
+  end,
 }

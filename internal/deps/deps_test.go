@@ -1,7 +1,9 @@
 package deps
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/edwinvillota/dotfiles/internal/manifest"
@@ -22,6 +24,7 @@ func TestResolveLinuxApt(t *testing.T) {
 	m := load(t)
 	p := Platform{OS: "linux", Arch: "amd64", Distro: "ubuntu", Apt: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
 	t.Setenv("PATH", t.TempDir()) // nothing installed
+	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
 	for _, it := range Resolve(m, p, append(m.Deps.Core, m.Deps.Extra...)) {
 		got[it.Name] = it
@@ -52,8 +55,8 @@ func TestResolveLinuxApt(t *testing.T) {
 	if got["colima"].Status != Unsupported {
 		t.Error("colima should be darwin-only")
 	}
-	if got["wezterm"].Status != Unsupported {
-		t.Errorf("wezterm on apt should be unsupported with a note, got %s", got["wezterm"].Status)
+	if w := got["wezterm"]; w.Status != Missing || w.Manager != "deb" {
+		t.Errorf("wezterm on apt should install from the official .deb, got %+v", w)
 	}
 	if got["gdu"].Bin != "gdu" {
 		t.Errorf("gdu bin on linux = %q", got["gdu"].Bin)
@@ -65,6 +68,7 @@ func TestResolveDarwin(t *testing.T) {
 	fake := t.TempDir()
 	p := Platform{OS: "darwin", Arch: "arm64", BrewDir: fake, Brew: fake + "/bin/brew"}
 	t.Setenv("PATH", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
 	for _, it := range Resolve(m, p, []string{"gdu", "wezterm", "fd", "colima"}) {
 		got[it.Name] = it
@@ -84,5 +88,93 @@ func TestResolveDarwin(t *testing.T) {
 func TestVersionLess(t *testing.T) {
 	if !less("0.9.5", "0.12") || less("0.12.4", "0.12") || less("1.0", "0.99") {
 		t.Error("version compare wrong")
+	}
+}
+
+func TestResolveDebPackage(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	p := Platform{OS: "linux", Arch: "amd64", Distro: "ubuntu", Apt: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	var wez Item
+	for _, it := range Resolve(m, p, []string{"wezterm"}) {
+		wez = it
+	}
+	if wez.Status != Missing || wez.Manager != "deb" || !strings.Contains(wez.Cmd[2], "apt-get install -y") || !strings.Contains(wez.Cmd[2], "Ubuntu22.04.deb") {
+		t.Errorf("wezterm deb resolve wrong: %+v", wez)
+	}
+	p.Arch = "arm64"
+	for _, it := range Resolve(m, p, []string{"wezterm"}) {
+		wez = it
+	}
+	if wez.Status != Missing || !strings.Contains(wez.Cmd[2], "arm64.deb") {
+		t.Errorf("arm64 should install the arm64 deb: %+v", wez)
+	}
+}
+
+func TestResolveArchPacman(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	p := Platform{OS: "linux", Arch: "amd64", Distro: "arch", Pacman: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	t.Setenv("HOME", t.TempDir())
+	got := map[string]Item{}
+	for _, it := range Resolve(m, p, append(m.Deps.Core, m.Deps.Extra...)) {
+		got[it.Name] = it
+	}
+	want := map[string]string{
+		"wezterm": "wezterm", "nvim": "neovim", "zellij": "zellij", "yazi": "yazi",
+		"gh": "github-cli", "sevenzip": "7zip", "powerlevel10k": "zsh-theme-powerlevel10k",
+		"dust": "dust", "atuin": "atuin", "fd": "fd", "gdu": "gdu",
+	}
+	for n, pkg := range want {
+		g := got[n]
+		if g.Status != Missing || g.Manager != "pacman" || g.Pkg != pkg {
+			t.Errorf("%s on arch: got %s %s %s, want pacman %s", n, g.Status, g.Manager, g.Pkg, pkg)
+		}
+		if len(g.Cmd) > 0 && g.Cmd[0] != "sudo" {
+			t.Errorf("%s: pacman must run under sudo: %v", n, g.Cmd)
+		}
+	}
+	// AUR-only tools fall back to Linuxbrew
+	for _, n := range []string{"zsh-autocomplete", "carapace", "lazysql"} {
+		if got[n].Status != NeedsBrew {
+			t.Errorf("%s on arch should need Homebrew, got %s", n, got[n].Status)
+		}
+	}
+}
+
+func TestResolveNodeViaNvm(t *testing.T) {
+	m := load(t)
+	t.Setenv("PATH", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	p := Platform{OS: "linux", Arch: "arm64", Distro: "ubuntu", Apt: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
+	got := map[string]Item{}
+	for _, it := range Resolve(m, p, []string{"nvm", "node"}) {
+		got[it.Name] = it
+	}
+	if got["nvm"].Status != Missing || got["nvm"].Manager != "git" {
+		t.Errorf("nvm should git-clone: %+v", got["nvm"])
+	}
+	n := got["node"]
+	if n.Status != Missing || !strings.Contains(n.Cmd[2], "nvm install 24") {
+		t.Errorf("node should install via nvm: %+v", n)
+	}
+	// fake an nvm-provided node >= 22
+	bin := filepath.Join(home, ".nvm")
+	os.MkdirAll(bin, 0o755)
+	os.WriteFile(filepath.Join(bin, "nvm.sh"), []byte("node(){ echo v24.13.0; }\n"), 0o755)
+	for _, it := range Resolve(m, p, []string{"node"}) {
+		n = it
+	}
+	if n.Status != Present || !strings.Contains(n.Found, "24.13") {
+		t.Errorf("nvm node should be detected: %+v", n)
+	}
+	// and an outdated one
+	os.WriteFile(filepath.Join(bin, "nvm.sh"), []byte("node(){ echo v18.1.0; }\n"), 0o755)
+	for _, it := range Resolve(m, p, []string{"node"}) {
+		n = it
+	}
+	if n.Status != Outdated {
+		t.Errorf("node 18 should be outdated: %+v", n)
 	}
 }

@@ -32,3 +32,21 @@ func TestRenderFrames(t *testing.T) {
 	press(md, "esc", "/", "csv")
 	dump("06-filter")
 }
+
+func TestRenderSetupFrames(t *testing.T) {
+	dir := os.Getenv("TUI_RENDER_DIR")
+	if dir == "" {
+		t.Skip("set TUI_RENDER_DIR to dump frames")
+	}
+	m, st := fixture(t)
+	s := NewSetup(m, st)
+	s.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	dump := func(n string) { os.WriteFile(dir+"/setup-"+n+".txt", []byte(stripANSI(s.View())), 0o644) }
+	dump("0-welcome")
+	s.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	dump("1-profile")
+	s.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	dump("2-features")
+	s.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	dump("3-review")
+}

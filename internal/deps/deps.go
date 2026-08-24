@@ -98,6 +98,25 @@ func resolveOne(m *manifest.Manifest, p Platform, name string) Item {
 		return it
 	}
 
+	if spec.Check != "" {
+		it.Manager, it.Pkg = "script", "shell install"
+		out, err := exec.Command("/bin/bash", "-c", spec.Check).Output()
+		v := ""
+		if m := verRe.FindStringSubmatch(strings.SplitN(string(out), "\n", 2)[0]); m != nil {
+			v = strings.TrimPrefix(m[0], "v")
+		}
+		switch {
+		case err == nil && (spec.Min == "" || (v != "" && !less(v, spec.Min))):
+			it.Status, it.Found = Present, strings.TrimSpace(strings.SplitN(string(out), "\n", 2)[0])
+			return it
+		case err == nil:
+			it.Status, it.Note = Outdated, "have "+v+", need >= "+spec.Min
+		default:
+			it.Status = Missing
+		}
+		it.Cmd = []string{"/bin/bash", "-c", spec.Run}
+		return it
+	}
 	if path := lookup(it.Bin, p); path != "" {
 		it.Found = path
 		if spec.Min != "" {
@@ -148,6 +167,21 @@ func resolveOne(m *manifest.Manifest, p Platform, name string) Item {
 	case p.OS == "linux":
 		// prefer brew when present (matches .zshrc); else native; else brew-needed
 		switch {
+		case p.Apt && len(spec.Deb) > 0:
+			url, ok := spec.Deb[p.Arch]
+			if !ok {
+				it.Status = Unsupported
+				it.Note = "no official .deb for linux/" + p.Arch
+				return it
+			}
+			it.Manager, it.Pkg = "deb", url
+			sudo := ""
+			if len(sudoPrefix(p)) > 0 {
+				sudo = "sudo "
+			}
+			it.Cmd = []string{"/bin/bash", "-c",
+				"set -e; t=$(mktemp)." + name + ".deb; curl -fsSL '" + url + "' -o \"$t\"; " + sudo + "apt-get install -y \"$t\"; rm -f \"$t\""}
+			return it
 		case p.Brew != "" && !brewSkip && !brewCask:
 			it.Manager, it.Pkg = "brew", brewName
 			it.Cmd = []string{p.Brew, "install", brewName}
@@ -291,7 +325,7 @@ func Install(m *manifest.Manifest, p Platform, items []Item, dryRun bool, log io
 		if it.Status != Missing && it.Status != Outdated {
 			continue
 		}
-		if it.Manager == "apt" && !aptUpdated {
+		if (it.Manager == "apt" || it.Manager == "deb") && !aptUpdated {
 			upd := sudoPrefix(p)
 			upd = append(upd, "apt-get", "update")
 			fmt.Fprintf(log, "→ apt: %s\n", strings.Join(upd, " "))

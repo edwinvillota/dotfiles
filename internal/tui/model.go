@@ -4,6 +4,7 @@ package tui
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -88,6 +89,9 @@ func New(m *manifest.Manifest, st *state.State) *Model {
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(cGold)
 	md := &Model{m: m, st: st, dir: plan.Backup, prof: st.Profile, expanded: map[string]bool{}, filter: ti}
 	md.preview = viewport.New(0, 0)
+	if _, err := os.Stat(state.Path(m.Home)); err != nil {
+		md.mode = modeHelp // first run: show the key reference up front
+	}
 	md.rebuild()
 	return md
 }
@@ -695,49 +699,66 @@ func (md *Model) viewTree() string {
 	}
 	for i := md.offset; i < len(md.rows) && i < md.offset+h; i++ {
 		r := md.rows[i]
-		box := sGreen.Render("●")
-		if !md.enabled(r) {
-			box = sDim.Render("○")
+		sel := i == md.cursor && md.pane == paneTree
+		// Every segment must carry the row background itself: a styled
+		// segment ends in an SGR reset, which would otherwise cut off a
+		// background applied around the whole line.
+		bg := func(st lipgloss.Style) lipgloss.Style {
+			if sel {
+				return st.Background(cSel).Bold(true)
+			}
+			return st
 		}
-		ind := "  "
+		sp := func(n int) string {
+			if n < 0 {
+				n = 0
+			}
+			return bg(lipgloss.NewStyle()).Render(strings.Repeat(" ", n))
+		}
+		box := bg(sGreen).Render("●")
+		if !md.enabled(r) {
+			box = bg(sDim).Render("○")
+		}
+		ind := sp(2)
 		if r.isUnit && r.children > 0 {
 			if md.expanded[r.unit] {
-				ind = sDim.Render("▾ ")
+				ind = bg(sDim).Render("▾ ")
 			} else {
-				ind = sDim.Render("▸ ")
+				ind = bg(sDim).Render("▸ ")
 			}
+		}
+		cur := sp(1)
+		if sel {
+			cur = bg(sBlue).Render("▍")
 		}
 		name := r.label
 		if r.depth > 0 {
 			name = "    " + name
 		}
+		nameR := bg(lipgloss.NewStyle().Foreground(cFg)).Render(name)
 		var badges []string
 		if r.create > 0 {
-			badges = append(badges, sGreen.Render(fmt.Sprintf("+%d", r.create)))
+			badges = append(badges, bg(sGreen).Render(fmt.Sprintf("+%d", r.create)))
 		}
 		if r.update > 0 {
-			badges = append(badges, sBlue.Render(fmt.Sprintf("~%d", r.update)))
+			badges = append(badges, bg(sBlue).Render(fmt.Sprintf("~%d", r.update)))
 		}
 		if r.delete > 0 {
-			badges = append(badges, sRed.Render(fmt.Sprintf("-%d", r.delete)))
+			badges = append(badges, bg(sRed).Render(fmt.Sprintf("-%d", r.delete)))
 		}
 		if r.secret {
-			badges = append(badges, sGold.Render("🔒"))
+			badges = append(badges, bg(sGold).Render("🔒"))
 		}
 		if len(badges) == 0 && md.enabled(r) {
-			badges = append(badges, sDim.Render("✓"))
+			badges = append(badges, bg(sDim).Render("✓"))
 		}
-		right := strings.Join(badges, " ")
-		left := ind + box + " " + name
+		right := strings.Join(badges, sp(1))
+		left := cur + ind + box + sp(1) + nameR
 		pad := w - lipgloss.Width(left) - lipgloss.Width(right)
 		if pad < 1 {
 			pad = 1
 		}
-		line := left + strings.Repeat(" ", pad) + right
-		if i == md.cursor && md.pane == paneTree {
-			line = sCursor.Render(lipgloss.NewStyle().Width(w).Render(line))
-		}
-		lines = append(lines, line)
+		lines = append(lines, left+sp(pad)+right)
 	}
 	for len(lines) < h {
 		lines = append(lines, "")
@@ -802,6 +823,11 @@ func (md *Model) helpText() string {
 		{"r", "refresh"}, {"?", "this help"}, {"q", "quit"},
 	}
 	var sb strings.Builder
+	sb.WriteString(sTitle.Render("dotfiles — what you are looking at") + "\n\n")
+	sb.WriteString("Left: everything the repo manages; " + sGreen.Render("●") + " means it will be synced, " + sDim.Render("○") + " means skipped.\n")
+	sb.WriteString("Right: exactly what the next run would do to the highlighted item.\n")
+	sb.WriteString("Direction is shown top-left: BACKUP = live→repo, INSTALL = repo→live.\n")
+	sb.WriteString("Nothing is written until you press " + sKey.Render("b") + "/" + sKey.Render("i") + " and confirm.\n\n")
 	sb.WriteString(sTitle.Render("keys") + "\n\n")
 	for _, r := range rows {
 		sb.WriteString(k(r[0]) + " " + r[1] + "\n")

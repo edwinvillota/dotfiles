@@ -37,9 +37,12 @@ check '[ -f "$H/.config/nvim/lua/plugins/only-live.lua" ]' "live-only file NOT d
 check '[ -f "$H/.config/zsh/zz-completion.zsh" ] || [ ! -f "$DOTFILES/zsh/config/zz-completion.zsh" ]' "zsh modular files installed"
 check '[ "$(cat "$H/.ssh/id_test")" = "ORIGINAL key" ]' "ssh private key untouched"
 check '[ -f "$H/.local/state/dotfiles/ledger.json" ]' "ledger written"
+check 'grep -q "zjstatus.wasm\"" "$H/.cache/zellij/permissions.kdl"' "zellij plugin permissions pre-granted"
 check 'grep -q "ORIGINAL init" "$H"/.local/state/dotfiles/backups/*/.config/nvim/init.lua' "original init.lua preserved"
 check 'zsh -n "$H/.config/zsh/"*.zsh' "installed zsh files parse"
-if [ -f "$H/.config/zsh/mec.zsh" ]; then bad "mec.zsh (secret) was installed although live absent? should be created from template only"; fi
+check '[ -f "$H/.config/zsh/mec.zsh" ]' "mec.zsh created from template (live was absent)"
+check '[ "$(stat -c %a "$H/.config/zsh/mec.zsh")" = 600 ]' "created secret is chmod 600"
+check '! grep -q "=[^ ]" "$H/.config/zsh/mec.zsh" || grep -q "# public" "$H/.config/zsh/mec.zsh"' "created secret has blanked values"
 
 step "install again (idempotent)"
 out=$(dotfiles install --yes --profile personal)
@@ -80,6 +83,16 @@ check 'grep -q "export HOST=h # public" "$SCRATCH/zsh/config/databases.zsh.templ
 echo 'export API_KEY=sk-live-123' > "$SCRATCH/zsh/config/oops.zsh"
 ( cd "$SCRATCH" && ! dotfiles check >/dev/null 2>&1 ); check '[ $? = 0 ]' "check FAILS on leaked secret"
 
+step "setup wizard (scripted answers: profile=personal, skip tools, apply configs)"
+rm -rf "$H/.config/dotfiles"
+out=$(printf 'personal\nn\ny\n' | dotfiles setup 2>&1)
+check 'echo "$out" | grep -q "step 1 · profile"' "wizard runs step 1"
+check 'grep -q "personal" "$H/.config/dotfiles/state.toml"' "profile persisted"
+check 'echo "$out" | grep -q "skipped — run .dotfiles deps"' "tool install can be declined"
+check '[ -f "$H/.config/nvim/init.lua" ]' "configs applied from wizard"
+check 'echo "$out" | grep -q "dotfiles uninstall"' "wizard explains rollback"
+dotfiles uninstall >/dev/null 2>&1
+
 step "deps: resolution on Linux/apt (dry-run)"
 out=$(dotfiles deps --dry-run 2>&1)
 check 'echo "$out" | grep -q "platform: linux/.* ubuntu"' "platform detected as linux/ubuntu"
@@ -88,14 +101,16 @@ check 'echo "$out" | grep -Eq "^  → fd +apt fd-find"' "fd maps to apt fd-find"
 check 'echo "$out" | grep -Eq "^  → sevenzip +apt 7zip"' "sevenzip maps to apt 7zip"
 check 'echo "$out" | grep -Eq "^  → nvim +brew neovim \(Homebrew will be installed first\)"' "nvim needs Homebrew (apt too old)"
 check 'echo "$out" | grep -Eq "^  ⊘ colima"' "colima marked darwin-only"
-check 'echo "$out" | grep -Eq "^  ⊘ wezterm"' "wezterm unsupported via apt, with note"
+check 'echo "$out" | grep -Eq "^  → wezterm +deb https://github.com/wezterm"' "wezterm installs from official .deb"
 check 'echo "$out" | grep -Eq "^  → oh-my-zsh +git https://github.com/ohmyzsh"' "oh-my-zsh planned as git clone"
 check 'echo "$out" | grep -q "homebrew prerequisites: sudo apt-get install"' "Homebrew bootstrap planned with apt prereqs"
 check 'echo "$out" | grep -q "nothing installed"' "dry-run installed nothing"
 
 step "deps: real apt install of a small subset"
 if [ -n "${E2E_NET:-}" ]; then
-  dotfiles deps --only ripgrep --only fd --only oh-my-zsh 2>&1 | tail -3
+  dotfiles deps --only ripgrep --only fd --only oh-my-zsh --only curl --only nvm --only node 2>&1 | tail -3
+  check '[ -s "$HOME/.nvm/nvm.sh" ]' "nvm cloned to ~/.nvm"
+  check 'bash -c ". $HOME/.nvm/nvm.sh >/dev/null 2>&1; node --version | grep -Eq \"^v(2[2-9]|[3-9][0-9])\""' "node >= 22 installed via nvm"
   check 'command -v rg' "ripgrep installed via apt"
   check 'command -v fdfind' "fd-find installed via apt"
   check '[ -d "$HOME/.oh-my-zsh" ]' "oh-my-zsh cloned"

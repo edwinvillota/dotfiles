@@ -43,13 +43,15 @@ dest = "~/.oh-my-zsh/custom"
 # third-party clones live here on a live machine; they are deps, not config
 ignore = ["*.zwc", "themes/powerlevel10k/", "themes/example.zsh-theme", "plugins/example/", "plugins/zsh-*/", "example.zsh"]
 
+# personal keeps everything (mec + gcp are used from home too); work drops them.
+# obsidian stays on both.
 [profile.personal]
 branch = "main"
-exclude = ["zsh/mec.zsh"]
+exclude = []
 
 [profile.work]
 branch = "office"
-exclude = ["zsh/google-cloud.zsh", "nvim/lua/plugins/obsidian.lua"]
+exclude = ["zsh/google-cloud.zsh", "zsh/mec.zsh"]
 
 [secrets]
 # extra regexes checked by `dotfiles check` on every file that would be committed
@@ -138,7 +140,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "zsh", "nvim", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
+core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -150,6 +152,20 @@ brew = "neovim"
 pacman = "neovim"
 min = "0.12"
 apt = { skip = true, note = "apt ships < 0.12; installed via Homebrew" }
+
+[deps.pkg.nvm]
+kind = "git"
+url = "https://github.com/nvm-sh/nvm.git"
+dest = "~/.nvm"
+needs = ["git"]
+
+# node comes from nvm (matching zsh/config/nvm.zsh), never a fixed system node.
+# copilot.lua needs >= 22; nvm installs 24.
+[deps.pkg.node]
+min = "22"
+needs = ["nvm", "curl"]
+check = 'export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" >/dev/null 2>&1; node --version'
+run = 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh" >/dev/null 2>&1; nvm install 24'
 
 [deps.pkg.oh-my-zsh]
 kind = "git"
@@ -181,8 +197,21 @@ pacman = { skip = true }
 bin = { darwin = "/Applications/WezTerm.app/Contents/MacOS/wezterm", linux = "wezterm" }
 brew = { cask = "wezterm" }
 pacman = "wezterm"
-apt = { skip = true, note = "no apt package; use the Flatpak or .deb from wezfurlong.org" }
+apt = { skip = true, note = "no repo package; installed from the official .deb below" }
+# official release .debs
+deb = { amd64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.deb", arm64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.arm64.deb" }
 os = ["darwin", "linux"]
+
+# --- adding another terminal later (e.g. ghostty) is two blocks: -----------
+# [unit.ghostty]
+# src = "ghostty"
+# dest = "~/.config/ghostty"
+#
+# [deps.pkg.ghostty]
+# brew = { cask = "ghostty" }
+# pacman = "ghostty"
+# apt = { skip = true, note = "installed from .deb" }
+# deb = { amd64 = "https://github.com/mkasberg/ghostty-ubuntu/releases/download/<ver>/ghostty_<ver>_amd64_24.04.deb" }
 
 [deps.pkg.fd]
 apt = "fd-find"

@@ -127,15 +127,23 @@ func (r PkgRef) Resolve2(def string) (string, bool, string) {
 }
 
 type PkgSpec struct {
-	Bin           Dest     `toml:"bin"`
-	Brew          PkgRef   `toml:"brew"`
-	Apt           PkgRef   `toml:"apt"`
-	Pacman        PkgRef   `toml:"pacman"`
-	Min           string   `toml:"min"`
-	Kind          string   `toml:"kind"`
-	URL           string   `toml:"url"`
-	Dest          string   `toml:"dest"`
-	Name          string   `toml:"name"`
+	Bin    Dest   `toml:"bin"`
+	Brew   PkgRef `toml:"brew"`
+	Apt    PkgRef `toml:"apt"`
+	Pacman PkgRef `toml:"pacman"`
+	Min    string `toml:"min"`
+	Kind   string `toml:"kind"`
+	URL    string `toml:"url"`
+	Dest   string `toml:"dest"`
+	Name   string `toml:"name"`
+	// Deb: per-arch URLs of an official .deb, for apt systems where no
+	// repo package exists (wezterm, ghostty, ...). Keys: amd64, arm64.
+	Deb map[string]string `toml:"deb"`
+	// Check: shell probe for presence — present when it exits 0; stdout is
+	// parsed for the version when `min` is set. Overrides the bin lookup.
+	Check string `toml:"check"`
+	// Run: shell command that installs the package (used with Check).
+	Run           string   `toml:"run"`
 	Needs         []string `toml:"needs"`
 	OS            []string `toml:"os"`
 	Note          string   `toml:"note"`
