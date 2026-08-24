@@ -43,13 +43,15 @@ dest = "~/.oh-my-zsh/custom"
 # third-party clones live here on a live machine; they are deps, not config
 ignore = ["*.zwc", "themes/powerlevel10k/", "themes/example.zsh-theme", "plugins/example/", "plugins/zsh-*/", "example.zsh"]
 
+# personal keeps everything (mec + gcp are used from home too); work drops them.
+# obsidian stays on both.
 [profile.personal]
 branch = "main"
-exclude = ["zsh/mec.zsh"]
+exclude = []
 
 [profile.work]
 branch = "office"
-exclude = ["zsh/google-cloud.zsh", "nvim/lua/plugins/obsidian.lua"]
+exclude = ["zsh/google-cloud.zsh", "zsh/mec.zsh"]
 
 [secrets]
 # extra regexes checked by `dotfiles check` on every file that would be committed
