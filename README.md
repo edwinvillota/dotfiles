@@ -20,6 +20,7 @@ dotfiles profile work    # personal (branch main) | work (branch office)
 dotfiles theme           # picker: switch every tool's theme at once (or: theme nord)
 ```
 `-n` / `--dry-run` shows exactly what would happen and writes nothing.
+Quick reference: [docs/cheatsheet.md](docs/cheatsheet.md).
 
 **Supported platforms:** macOS (Homebrew), Ubuntu/Debian (apt + official .deb
 + Linuxbrew fallback), Arch (pacman + Linuxbrew fallback for AUR-only tools).
