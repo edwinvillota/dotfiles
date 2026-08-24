@@ -166,7 +166,15 @@ func main() {
 	case "tui":
 		err = c.tui()
 	case "setup":
-		err = c.setup()
+		if isTerminal() {
+			st, serr := state.Load(c.m.Home)
+			if serr != nil {
+				die(serr)
+			}
+			_, err = tea.NewProgram(tui.NewSetup(c.m, st), tea.WithAltScreen()).Run()
+		} else {
+			err = c.setup() // scripted/CI fallback
+		}
 	default:
 		usage()
 		os.Exit(2)
