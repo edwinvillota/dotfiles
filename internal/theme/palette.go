@@ -160,3 +160,32 @@ func rgb(hex string) (int, int, int) {
 	v, _ := strconv.ParseInt(hex[1:], 16, 32)
 	return int(v >> 16), int(v >> 8 & 0xff), int(v & 0xff)
 }
+
+// Xterm256 returns the nearest xterm-256 color index for a hex color,
+// searching only the fixed 6x6x6 cube (16-231) and the grayscale ramp
+// (232-255). Indices 0-15 are deliberately excluded: the terminal remaps
+// those to the active theme's ANSI slots, so "black" is #929292 under
+// jellybeans — exactly the trap that makes unthemed VisiData unreadable.
+func Xterm256(hex string) int {
+	r, g, b := rgb(hex)
+	best, bestDist := 16, 1<<30
+	try := func(idx, cr, cg, cb int) {
+		d := (r-cr)*(r-cr) + (g-cg)*(g-cg) + (b-cb)*(b-cb)
+		if d < bestDist {
+			best, bestDist = idx, d
+		}
+	}
+	levels := []int{0, 95, 135, 175, 215, 255}
+	for i, cr := range levels {
+		for j, cg := range levels {
+			for k, cb := range levels {
+				try(16+36*i+6*j+k, cr, cg, cb)
+			}
+		}
+	}
+	for i := 0; i < 24; i++ {
+		v := 8 + 10*i
+		try(232+i, v, v, v)
+	}
+	return best
+}

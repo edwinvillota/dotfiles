@@ -3,7 +3,9 @@ package theme
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -57,9 +59,10 @@ func TestRenderersContainPaletteColors(t *testing.T) {
 	p, _ := Load("nord")
 	for name, out := range map[string]string{
 		"wezterm": Wezterm(p), "zellij": ZellijTheme(p), "zjstatus": ZjstatusLayout(p),
-		"zsh": ZshEnv(p), "yazi": YaziFlavor(p), "btop": BtopTheme(p), "ghdash": GhDashThemeBlock(p),
+		"zsh": ZshEnv(p), "yazi": YaziFlavor(p), "btop": BtopTheme(p), "ghdash": GhDashThemeBlock(p), "visidata": VisiData(p),
 	} {
-		if name != "zjstatus" && !strings.Contains(out, p.Primary.Background) {
+		// visidata speaks xterm-256 indices, never hex (see VisiData)
+		if name != "zjstatus" && name != "visidata" && !strings.Contains(out, p.Primary.Background) {
 			t.Errorf("%s output missing background %s", name, p.Primary.Background)
 		}
 		if strings.Contains(out, "{{") {
@@ -173,6 +176,9 @@ dest = "~/.config/zellij"
 [unit.btop]
 src = "btop"
 dest = "~/.config/btop"
+[unit.visidata]
+src = "visidata/.visidatarc"
+dest = "~/.visidatarc"
 `)
 	m, err := manifest.Load(filepath.Join(root, "dotfiles.toml"), home)
 	if err != nil {
@@ -182,6 +188,7 @@ dest = "~/.config/btop"
 	for p, s := range map[string]string{
 		".config/zellij/config.kdl": "theme \"ayu-dark\"\nrest\n",
 		".config/btop/btop.conf":    "color_theme = \"ayu-dark\"\n",
+		".visidatarc":               "# rc\n",
 	} {
 		fp := filepath.Join(home, p)
 		os.MkdirAll(filepath.Dir(fp), 0o755)
@@ -194,19 +201,24 @@ func TestApplyIdempotentAndRoundTrip(t *testing.T) {
 	m := testManifest(t)
 	snap := func() map[string]string {
 		out := map[string]string{}
-		filepath.Walk(filepath.Join(m.Home, ".config"), func(p string, fi os.FileInfo, err error) error {
-			if err == nil && !fi.IsDir() {
-				b, _ := os.ReadFile(p)
-				out[p] = string(b)
-			}
-			return nil
-		})
+		for _, dir := range []string{".config", ".visidata"} {
+			filepath.Walk(filepath.Join(m.Home, dir), func(p string, fi os.FileInfo, err error) error {
+				if err == nil && !fi.IsDir() {
+					b, _ := os.ReadFile(p)
+					out[p] = string(b)
+				}
+				return nil
+			})
+		}
 		return out
 	}
 	if _, err := Apply(m, "ayu-dark", nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	base := snap()
+	if _, ok := base[filepath.Join(m.Home, ".visidata/theme.py")]; !ok {
+		t.Error("visidata theme not written")
+	}
 	if len(base) < 4 {
 		t.Fatalf("expected theme files written, got %v", base)
 	}
@@ -239,6 +251,7 @@ func TestApplyIdempotentAndRoundTrip(t *testing.T) {
 func TestApplySkipsMissingLiveFiles(t *testing.T) {
 	m := testManifest(t)
 	os.Remove(filepath.Join(m.Home, ".config/btop/btop.conf"))
+	os.Remove(filepath.Join(m.Home, ".visidatarc"))
 	res, err := Apply(m, "nord", nil, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -252,6 +265,9 @@ func TestApplySkipsMissingLiveFiles(t *testing.T) {
 	if !found {
 		t.Errorf("expected skip notice for btop.conf, got %v", res.Notices)
 	}
+	if _, err := os.Stat(filepath.Join(m.Home, ".visidata/theme.py")); err == nil {
+		t.Error("visidata theme written without an installed .visidatarc")
+	}
 }
 
 func TestNormalizeRepo(t *testing.T) {
@@ -264,5 +280,49 @@ func TestNormalizeRepo(t *testing.T) {
 	b, _ := os.ReadFile(filepath.Join(root, "zellij/config.kdl"))
 	if string(b) != "theme \"ayu-dark\"\n" {
 		t.Errorf("not normalized: %q", b)
+	}
+}
+
+// VisiData's defaults are written as "white on black", and the terminal remaps
+// ANSI black to the theme's palette (jellybeans: #929292, a mid grey), so the
+// renderer must emit fixed cube indices only — never a low ANSI number or name.
+func TestVisiDataAvoidsRemappedANSI(t *testing.T) {
+	p, _ := Load("jellybeans")
+	out := VisiData(p)
+	if !strings.Contains(out, "vd.options.color_default = ") {
+		t.Fatal("visidata renderer missing color_default")
+	}
+	re := regexp.MustCompile(`vd\.options\.(color_\w+) = "([^"]*)"`)
+	seen := 0
+	for _, m := range re.FindAllStringSubmatch(out, -1) {
+		seen++
+		for _, tok := range strings.Fields(m[2]) {
+			switch tok {
+			case "on", "bold", "underline", "italic", "reverse":
+				continue
+			}
+			n, err := strconv.Atoi(tok)
+			if err != nil {
+				t.Errorf("%s: %q is not a color index", m[1], tok)
+			} else if n < 16 || n > 255 {
+				t.Errorf("%s: index %d is terminal-remapped or out of range", m[1], n)
+			}
+		}
+	}
+	if seen < 20 {
+		t.Errorf("only %d color options rendered", seen)
+	}
+}
+
+func TestXterm256(t *testing.T) {
+	for hex, want := range map[string]int{
+		"#000000": 16, "#ffffff": 231, "#121212": 233, "#ff0000": 196,
+	} {
+		if got := Xterm256(hex); got != want {
+			t.Errorf("Xterm256(%s) = %d, want %d", hex, got, want)
+		}
+	}
+	if n := Xterm256("#929292"); n < 16 {
+		t.Errorf("Xterm256 returned remapped index %d", n)
 	}
 }

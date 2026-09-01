@@ -70,8 +70,8 @@ live in `~/.config/dotfiles/state.toml`, never in the repo.
 ## Themes
 
 `dotfiles theme` switches one shared theme across wezterm, zellij (theme +
-zjstatus status bar), nvim, fzf, bat, yazi, btop, gh-dash and the tool's own
-TUI (`t` key opens the same picker). Available: ayu dark (default), iceberg,
+zjstatus status bar), nvim, fzf, bat, yazi, btop, gh-dash, visidata and the
+tool's own TUI (`t` key opens the same picker). Available: ayu dark (default), iceberg,
 jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 
 - Palettes come verbatim from [terminalcolors.com](https://terminalcolors.com/)
@@ -82,6 +82,12 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 - The active theme is per-machine state (`state.toml`), never a commit: the
   post-install hook re-applies it after `install`, and `backup` normalizes the
   theme-selecting lines back to ayu-dark before they reach the repo.
+- VisiData is the one tool that cannot take hex: its colors are xterm-256
+  indices or the 8 ANSI names, and its stock theme is written as
+  `white on black`. Since the terminal remaps ANSI 0-15 to the active palette
+  (jellybeans' black is `#929292`), those defaults paint the sheet grey. The
+  generated `~/.visidata/theme.py` (exec'd by `.visidatarc` when present) uses
+  only fixed cube indices 16-255, so it is immune to the remapping.
 - Reload behavior: wezterm recolors live; zellij needs a session restart; nvim
   and the other TUIs use the new theme on their next start; open a new shell
   (or source `~/.config/zsh/00-theme.zsh`) for fzf/bat.
