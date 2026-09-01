@@ -1,3 +1,14 @@
+# Machine-local theme written by `dotfiles theme` (see internal/theme). Absent
+# on a machine that has never switched themes, in which case VisiData keeps its
+# own defaults. It has to be a separate file: the theme is per-machine state
+# and this rc is committed.
+import os as _os
+
+_theme = _os.path.expanduser('~/.visidata/theme.py')
+if _os.path.exists(_theme):
+    with open(_theme) as _fp:
+        exec(compile(_fp.read(), _theme, 'exec'))
+
 # Auto-detect the CSV delimiter, which VisiData does not do on its own:
 # its csv loader passes options.csv_delimiter (default ",") straight to csv.reader.
 # Scores candidates by field-count consistency across a sample, like csvview.nvim.

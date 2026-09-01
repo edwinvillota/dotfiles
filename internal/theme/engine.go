@@ -18,7 +18,7 @@ const Default = "ayu-dark"
 
 // Units are the manifest units the theme engine writes into. Installing any
 // of them triggers a theme re-apply (see apply's postInstall hook).
-var Units = []string{"wezterm", "nvim", "zsh", "zellij", "yazi", "btop", "gh-dash"}
+var Units = []string{"wezterm", "nvim", "zsh", "zellij", "yazi", "btop", "gh-dash", "visidata"}
 
 // Result reports what Apply changed and what the user must do to see it.
 type Result struct {
@@ -154,6 +154,16 @@ func Apply(m *manifest.Manifest, name string, led *ledger.Ledger, log io.Writer)
 		}
 	}
 
+	// VisiData's unit dest is the rc file itself, so the generated theme goes
+	// next to it and .visidatarc execs it when present.
+	if d := dest("visidata"); d != "" {
+		if _, serr := os.Stat(d); serr != nil {
+			res.Notices = append(res.Notices, fmt.Sprintf("skip %s (not installed)", d))
+		} else if err := write("visidata", filepath.Join(m.Home, ".visidata", "theme.py"), []byte(VisiData(p)), false); err != nil {
+			return res, err
+		}
+	}
+
 	if ownLedger {
 		if err := led.Save(); err != nil {
 			return res, err
@@ -164,7 +174,7 @@ func Apply(m *manifest.Manifest, name string, led *ledger.Ledger, log io.Writer)
 		"zellij: restart the session to pick up theme + status bar",
 		"nvim: running instances keep the old colors; new ones use " + p.Label,
 		"shell (fzf/bat): open a new shell or `source ~/.config/zsh/00-theme.zsh`",
-		"yazi / btop / gh-dash: restart the app",
+		"yazi / btop / gh-dash / visidata: restart the app",
 	}
 	return res, nil
 }

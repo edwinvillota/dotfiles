@@ -40,7 +40,7 @@ Repo: `~/Documents/dev/dotfiles` · binary reads `dotfiles.toml` · full tour: `
 ## 3. Themes
 
 One shared palette themes wezterm, zellij (+ zjstatus bar), nvim, fzf, bat,
-yazi, btop, gh-dash and the dotfiles TUI itself.
+yazi, btop, gh-dash, visidata and the dotfiles TUI itself.
 
 ```
 dotfiles theme              # interactive picker (TTY); plain list when piped
@@ -59,7 +59,7 @@ Available: `ayu-dark` (default) · `iceberg` · `jellybeans` · `kanagawa-wave` 
 | zellij | restart the session |
 | nvim | new instances only |
 | fzf / bat | new shell, or `source ~/.config/zsh/00-theme.zsh` |
-| yazi / btop / gh-dash | restart the app |
+| yazi / btop / gh-dash / visidata | restart the app |
 
 **How it's wired (for future me):**
 

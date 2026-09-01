@@ -317,3 +317,87 @@ func GhDashThemeBlock(p *Palette) string {
 		p.Primary.Foreground, r.Accent2, p.Primary.Background, r.Dim, r.Warn, r.Good, r.Error,
 		r.Sel, r.Accent2, r.Line, r.Panel)
 }
+
+// VisiData renders ~/.visidata/theme.py, exec'd by the repo's .visidatarc
+// when present (absent = VisiData's own defaults).
+//
+// VisiData colors are xterm-256 indices or the 8 ANSI names, never hex, and
+// its stock theme leans on `black`/`white` — which the terminal remaps to the
+// active palette, so a theme whose ANSI black is a mid grey paints the whole
+// sheet grey. Every color here is therefore a fixed cube index derived from
+// the palette (see Xterm256), independent of the ANSI remapping.
+func VisiData(p *Palette) string {
+	r := p.Roles
+	c := Xterm256
+	fg, bg := c(p.Primary.Foreground), c(p.Primary.Background)
+	panel, line, dim := c(r.Panel), c(r.Line), c(r.Dim)
+	accent, accent2 := c(r.Accent), c(r.Accent2)
+	good, warn, bad := c(r.Good), c(r.Warn), c(r.Error)
+	sel := c(r.Sel)
+	// current column: a shade off the background, so it reads under the row cursor
+	col := c(Mix(p.Primary.Background, p.Primary.Foreground, 0.10))
+	readonly := c(Mix(p.Primary.Background, r.Error, 0.25))
+
+	opts := [][2]string{
+		// sheet body
+		{"color_default", fmt.Sprintf("%d on %d", fg, bg)},
+		{"color_default_hdr", fmt.Sprintf("bold %d on %d", accent, panel)},
+		{"color_bottom_hdr", fmt.Sprintf("underline %d on %d", fg, panel)},
+		{"color_current_hdr", fmt.Sprintf("bold %d on %d", bg, accent)},
+		{"color_column_sep", fmt.Sprintf("%d on %d", line, bg)},
+		{"color_key_col", fmt.Sprintf("%d", accent2)},
+		{"color_hidden_col", fmt.Sprintf("%d", dim)},
+		{"color_current_row", fmt.Sprintf("on %d", sel)},
+		{"color_current_col", fmt.Sprintf("on %d", col)},
+		{"color_selected_row", fmt.Sprintf("%d", accent)},
+		{"color_readonly", fmt.Sprintf("on %d", readonly)},
+		// menu bar and helpbox
+		{"color_menu", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_menu_active", fmt.Sprintf("bold %d on %d", bg, accent)},
+		{"color_menu_spec", fmt.Sprintf("%d on %d", good, panel)},
+		{"color_menu_help", fmt.Sprintf("italic %d on %d", fg, panel)},
+		// status bars, sidebar, command palette
+		{"color_status", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_active_status", fmt.Sprintf("bold %d on %d", bg, accent2)},
+		{"color_inactive_status", fmt.Sprintf("%d on %d", dim, panel)},
+		{"color_top_status", fmt.Sprintf("underline %d on %d", fg, panel)},
+		{"color_highlight_status", fmt.Sprintf("%d on %d", bg, good)},
+		{"color_status_replay", fmt.Sprintf("%d", good)},
+		{"color_longname_status", fmt.Sprintf("%d", dim)},
+		{"color_longname_guide", fmt.Sprintf("%d", dim)},
+		{"color_guide_unwritten", fmt.Sprintf("%d on %d", dim, bg)},
+		{"color_sidebar", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_sidebar_title", fmt.Sprintf("bold %d on %d", bg, accent)},
+		{"color_cmdpalette", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_match", fmt.Sprintf("bold %d", accent)},
+		{"color_highlight_search", fmt.Sprintf("bold %d on %d", bg, accent)},
+		{"color_aggregator", fmt.Sprintf("bold %d on %d", accent2, panel)},
+		{"color_heading", fmt.Sprintf("bold %d on %d", bg, accent)},
+		{"color_code", fmt.Sprintf("bold %d on %d", accent2, panel)},
+		{"color_keystrokes", fmt.Sprintf("bold %d on %d", accent, panel)},
+		// editing and pending edits
+		{"color_edit_cell", fmt.Sprintf("%d on %d", bg, accent2)},
+		{"color_edit_unfocused", fmt.Sprintf("%d on %d", dim, panel)},
+		{"color_add_pending", fmt.Sprintf("%d", good)},
+		{"color_change_pending", fmt.Sprintf("reverse %d", warn)},
+		{"color_delete_pending", fmt.Sprintf("%d", bad)},
+		{"color_note_pending", fmt.Sprintf("bold %d", good)},
+		{"color_note_row", fmt.Sprintf("%d", warn)},
+		{"color_note_type", fmt.Sprintf("%d", accent)},
+		// messages and graphs
+		{"color_error", fmt.Sprintf("%d", bad)},
+		{"color_warning", fmt.Sprintf("%d", warn)},
+		{"color_working", fmt.Sprintf("%d", good)},
+		{"color_currency_neg", fmt.Sprintf("%d", bad)},
+		{"color_graph_axis", fmt.Sprintf("bold %d", dim)},
+		{"color_graph_hidden", fmt.Sprintf("%d", dim)},
+		{"color_graph_selected", fmt.Sprintf("bold %d", accent)},
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s\n# theme: %s (%s)\nfrom visidata import vd\n\n", genHeader, p.Name, p.Label)
+	for _, o := range opts {
+		fmt.Fprintf(&b, "vd.options.%s = %q\n", o[0], o[1])
+	}
+	return b.String()
+}
