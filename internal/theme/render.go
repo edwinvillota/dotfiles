@@ -330,7 +330,22 @@ func VisiData(p *Palette) string {
 	r := p.Roles
 	c := Xterm256
 	fg, bg := c(p.Primary.Foreground), c(p.Primary.Background)
-	panel, line := c(r.Panel), c(r.Line)
+	// Panels -- menu bar, status bars, sidebar, and the popup boxes drawn with
+	// disp_boxchars -- sit 6% off the background, which quantizes to at most a
+	// single index step (ayu-dark lands on the background exactly). The chrome
+	// then blends into the sheet and popups lose their edge. Step it away far
+	// enough to read as a distinct surface while staying quiet.
+	const minPanelVsBody = 1.35
+	panelHex := r.Panel
+	if contrastIdx(bg, c(panelHex)) < minPanelVsBody {
+		for t := 0.06; t <= 0.40; t += 0.02 {
+			if x := Mix(p.Primary.Background, p.Primary.Foreground, t); contrastIdx(bg, c(x)) >= minPanelVsBody {
+				panelHex = x
+				break
+			}
+		}
+	}
+	panel := c(panelHex)
 	accent, accent2 := c(r.Accent), c(r.Accent2)
 	good, warn, bad := c(r.Good), c(r.Warn), c(r.Error)
 	readonly := c(Mix(p.Primary.Background, r.Error, 0.25))
@@ -353,7 +368,14 @@ func VisiData(p *Palette) string {
 		}
 		return fg
 	}
-	dimPanel, dimBody := dimOn(r.Panel), dimOn(p.Primary.Background)
+	dimPanel, dimBody := dimOn(panelHex), dimOn(p.Primary.Background)
+
+	// The longname (the command name echoed while a command runs) normally sets
+	// only a foreground, but VisiData draws it over the ACTIVE status
+	// background -- accent2, not the panel it was tuned against -- and Nord
+	// rendered "exec-longname" at 1.12 contrast there. No single foreground can
+	// clear both surfaces (one is dark, the other light), so pin an explicit
+	// background instead of inheriting whichever bar it lands on.
 
 	// Cursor colors.
 	//
@@ -455,6 +477,27 @@ func VisiData(p *Palette) string {
 		return fg
 	}
 	hiddenCol, noteRow := onCursor(r.Dim), onCursor(r.Warn)
+
+	// Column separators are the grid. `line` is a 12% mix off the background,
+	// which quantizes to a single index step -- on every palette here that
+	// renders the │ and ║ rules invisible, leaving no column boundaries at all.
+	// They are thin marks, so they need real separation from the body, and they
+	// are redrawn over the cursor row (sheets.go composites sepcattr from the
+	// row colour), so they have to survive that background too.
+	const minSepVsBody = 2.2
+	const minSepVsRow = 1.5
+	sep := c(r.Line)
+	sepOK := func(x int) bool {
+		return contrastIdx(x, body) >= minSepVsBody && contrastIdx(x, rowBg) >= minSepVsRow
+	}
+	if !sepOK(sep) {
+		for t := 0.12; t <= 0.90; t += 0.02 {
+			if x := c(Mix(p.Primary.Background, p.Primary.Foreground, t)); sepOK(x) {
+				sep = x
+				break
+			}
+		}
+	}
 	keyCol, selRow := onCursor(r.Accent2), onCursor(r.Accent)
 
 	opts := [][2]string{
@@ -463,7 +506,7 @@ func VisiData(p *Palette) string {
 		{"color_default_hdr", fmt.Sprintf("bold %d on %d", accent, panel)},
 		{"color_bottom_hdr", fmt.Sprintf("underline %d on %d", fg, panel)},
 		{"color_current_hdr", fmt.Sprintf("bold %d on %d", bg, accent)},
-		{"color_column_sep", fmt.Sprintf("%d on %d", line, bg)},
+		{"color_column_sep", fmt.Sprintf("%d on %d", sep, bg)},
 		{"color_key_col", fmt.Sprintf("%d", keyCol)},
 		{"color_hidden_col", fmt.Sprintf("%d", hiddenCol)},
 		{"color_current_row", fmt.Sprintf("%d on %d", rowFg, rowBg)},
@@ -483,8 +526,8 @@ func VisiData(p *Palette) string {
 		{"color_top_status", fmt.Sprintf("underline %d on %d", fg, panel)},
 		{"color_highlight_status", fmt.Sprintf("%d on %d", bg, good)},
 		{"color_status_replay", fmt.Sprintf("%d", good)},
-		{"color_longname_status", fmt.Sprintf("%d", dimPanel)},
-		{"color_longname_guide", fmt.Sprintf("%d", dimPanel)},
+		{"color_longname_status", fmt.Sprintf("%d on %d", dimPanel, panel)},
+		{"color_longname_guide", fmt.Sprintf("%d on %d", dimPanel, panel)},
 		{"color_guide_unwritten", fmt.Sprintf("%d on %d", dimBody, bg)},
 		{"color_sidebar", fmt.Sprintf("%d on %d", fg, panel)},
 		{"color_sidebar_title", fmt.Sprintf("bold %d on %d", bg, accent)},

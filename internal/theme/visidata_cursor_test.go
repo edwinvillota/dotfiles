@@ -170,3 +170,57 @@ func TestVisiDataMarksReadableOnCursorRow(t *testing.T) {
 		})
 	}
 }
+
+// The column separators ARE the grid. They are thin single characters, so a
+// tint one index step off the background makes them vanish and the sheet reads
+// as unaligned text. They are also redrawn over the cursor row, so they must
+// survive that background too.
+func TestVisiDataColumnSeparatorsVisible(t *testing.T) {
+	const (
+		minVsBody = 2.2
+		minVsRow  = 1.5
+	)
+	fgRe := regexp.MustCompile(`(\d+)\s+on\s+\d+`)
+	for _, name := range Names() {
+		t.Run(name, func(t *testing.T) {
+			o := vdOpts(t, name)
+			body, _ := bgIdx(o["color_default"])
+			rowBg, _ := bgIdx(o["color_current_row"])
+			m := fgRe.FindStringSubmatch(o["color_column_sep"])
+			if m == nil {
+				t.Fatalf("color_column_sep malformed: %q", o["color_column_sep"])
+			}
+			var sep int
+			fmt.Sscanf(m[1], "%d", &sep)
+			if c := contrastIdx(sep, body); c < minVsBody {
+				t.Errorf("separator %d vs body %d: contrast %.2f < %.2f", sep, body, c, minVsBody)
+			}
+			if c := contrastIdx(sep, rowBg); c < minVsRow {
+				t.Errorf("separator %d vs cursor row %d: contrast %.2f < %.2f", sep, rowBg, c, minVsRow)
+			}
+		})
+	}
+}
+
+// Menu bar, status bars, sidebar and popup boxes are all painted on the panel
+// colour. At 6% off the background it quantizes to at most one index step --
+// ayu-dark landed on the background exactly -- so the chrome disappears into
+// the sheet and popups lose their edge.
+func TestVisiDataPanelDistinctFromBody(t *testing.T) {
+	const minPanel = 1.35
+	for _, name := range Names() {
+		t.Run(name, func(t *testing.T) {
+			o := vdOpts(t, name)
+			body, _ := bgIdx(o["color_default"])
+			for _, key := range []string{"color_menu", "color_status", "color_sidebar"} {
+				panel, ok := bgIdx(o[key])
+				if !ok {
+					t.Fatalf("%s has no background: %q", key, o[key])
+				}
+				if c := contrastIdx(body, panel); c < minPanel {
+					t.Errorf("%s: panel %d vs body %d has contrast %.2f < %.2f", key, panel, body, c, minPanel)
+				}
+			}
+		})
+	}
+}
