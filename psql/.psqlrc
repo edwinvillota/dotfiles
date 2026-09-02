@@ -1,0 +1,27 @@
+-- psql configuration. Read by interactive psql AND by vim-dadbod: dadbod runs
+-- psql without --no-psqlrc (vim-dadbod/autoload/db/adapter/postgresql.vim:13),
+-- so these settings apply to :DB queries too. dadbod is also the only caller
+-- that passes -v ON_ERROR_STOP=1, which is how the two are told apart. Test the
+-- VALUE, not \if :ON_ERROR_STOP -- psql always defines the variable
+-- (defaulting to "off"), so the existence test is true everywhere. The completion/table-list queries dadbod runs
+-- do pass --no-psqlrc, so they are unaffected either way.
+
+\set QUIET on
+
+\if :ON_ERROR_STOP
+-- vim-dadbod: emit CSV so csvview.nvim can render the dbout buffer as a real
+-- grid -- aligned columns, sticky header, Tab/S-Tab column navigation.
+\pset format csv
+\else
+-- Interactive psql: readable tables.
+\pset linestyle unicode
+\pset border 2
+\pset null '∅'
+\timing on
+-- NOT \x auto. It flips to expanded output whenever a row is wider than the
+-- terminal, which turns every row into a field/value list -- surprising on any
+-- query with a wide column (JSON, long text). Toggle it per session with \x
+-- when a single wide row is genuinely easier to read that way.
+\endif
+
+\set QUIET off

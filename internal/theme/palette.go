@@ -4,6 +4,7 @@ package theme
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strconv"
@@ -146,6 +147,42 @@ func (p *Palette) validate() error {
 }
 
 // Mix blends a towards b by t (0..1) in RGB space.
+// idxRGB maps an xterm-256 index back to rgb, mirroring the 6x6x6 cube and
+// grayscale ramp Xterm256 searches. Indices 0-15 are never produced by
+// Xterm256, so they are not handled.
+func idxRGB(i int) (int, int, int) {
+	levels := []int{0, 95, 135, 175, 215, 255}
+	if i >= 16 && i <= 231 {
+		n := i - 16
+		return levels[n/36], levels[n/6%6], levels[n%6]
+	}
+	v := 8 + 10*(i-232)
+	return v, v, v
+}
+
+func lumIdx(i int) float64 {
+	r, g, b := idxRGB(i)
+	f := func(c int) float64 {
+		s := float64(c) / 255
+		if s <= 0.03928 {
+			return s / 12.92
+		}
+		return math.Pow((s+0.055)/1.055, 2.4)
+	}
+	return 0.2126*f(r) + 0.7152*f(g) + 0.0722*f(b)
+}
+
+// contrastIdx is the WCAG contrast ratio between two xterm-256 indices.
+// Colors are compared after quantization because that is what the terminal
+// actually paints -- two distinct hex values can land on the same index.
+func contrastIdx(a, b int) float64 {
+	l1, l2 := lumIdx(a), lumIdx(b)
+	if l2 > l1 {
+		l1, l2 = l2, l1
+	}
+	return (l1 + 0.05) / (l2 + 0.05)
+}
+
 func Mix(a, b string, t float64) string {
 	ar, ag, ab := rgb(a)
 	br, bg, bb := rgb(b)

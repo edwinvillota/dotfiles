@@ -96,6 +96,12 @@ src = "lazysql"
 dest = { darwin = "~/Library/Application Support/lazysql", linux = "~/.config/lazysql" }
 only = ["config.toml", "saved_queries/*"]   # `history` stays local
 
+# Read by interactive psql and, because dadbod does not pass --no-psqlrc, by
+# :DB queries in Neovim as well. See the file for how the two are told apart.
+[unit.psqlrc]
+src = "psql/.psqlrc"
+dest = "~/.psqlrc"
+
 [unit.visidata]
 src = "visidata/.visidatarc"
 dest = "~/.visidatarc"

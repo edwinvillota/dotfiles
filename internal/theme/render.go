@@ -330,13 +330,132 @@ func VisiData(p *Palette) string {
 	r := p.Roles
 	c := Xterm256
 	fg, bg := c(p.Primary.Foreground), c(p.Primary.Background)
-	panel, line, dim := c(r.Panel), c(r.Line), c(r.Dim)
+	panel, line := c(r.Panel), c(r.Line)
 	accent, accent2 := c(r.Accent), c(r.Accent2)
 	good, warn, bad := c(r.Good), c(r.Warn), c(r.Error)
-	sel := c(r.Sel)
-	// current column: a shade off the background, so it reads under the row cursor
-	col := c(Mix(p.Primary.Background, p.Primary.Foreground, 0.10))
 	readonly := c(Mix(p.Primary.Background, r.Error, 0.25))
+
+	// `dim` marks de-emphasized text -- inactive status, unfocused edits,
+	// unwritten guide entries. Quiet is the point, unreadable is not: on
+	// palettes whose dim role sits almost on top of the surface it is drawn on
+	// it vanishes (Nord's lands at 1.37 against its own panel). Lift it toward
+	// the foreground until it clears a legibility floor on that surface.
+	const minDim = 3.0
+	dimOn := func(surface string) int {
+		si := c(surface)
+		if contrastIdx(si, c(r.Dim)) >= minDim {
+			return c(r.Dim)
+		}
+		for t := 0.0; t <= 1.0; t += 0.04 {
+			if i := c(Mix(r.Dim, p.Primary.Foreground, t)); contrastIdx(si, i) >= minDim {
+				return i
+			}
+		}
+		return fg
+	}
+	dimPanel, dimBody := dimOn(r.Panel), dimOn(p.Primary.Background)
+
+	// Cursor colors.
+	//
+	// VisiData draws the cursor as a crosshair: color_current_row over the
+	// whole row, color_current_col over the whole column, and color_current_cell
+	// (highest precedence, empty by default) where they meet. Painting only
+	// backgrounds -- and leaving current_cell unset -- makes the cursor position
+	// guesswork on any palette whose selection colour sits close to the
+	// background, so each layer here is checked against what the terminal will
+	// actually paint, after quantization to the 256-color cube.
+	//
+	// Thresholds are deliberately modest: the row and column are large areas,
+	// where a heavy tint fights the data, while the single cursor cell can
+	// afford to be loud.
+	const (
+		minRowVsBody = 1.70 // cursor row background vs the sheet body
+		minColVsBody = 1.55 // cursor column background vs the sheet body
+		minCellVsRow = 1.45 // the cursor cell vs the rest of its row
+		minText      = 4.5  // text on any cursor background
+		minOnCursor  = 3.0  // fg-only marks composited onto the cursor row
+	)
+
+	// stepAway walks a mix from base toward target until the quantized result
+	// clears want against base, so a palette whose sel is nearly the background
+	// still yields a visible cursor instead of silently collapsing onto it.
+	stepAway := func(base, target string, start, want float64) int {
+		bi := c(base)
+		for t := start; t <= 0.60; t += 0.02 {
+			if i := c(Mix(base, target, t)); contrastIdx(bi, i) >= want {
+				return i
+			}
+		}
+		return c(Mix(base, target, 0.60))
+	}
+
+	// readable picks whichever candidate reads best on the given background,
+	// preferring the earlier ones when they already clear minText.
+	readable := func(on int, cands ...int) int {
+		best, bestC := cands[0], contrastIdx(cands[0], on)
+		for _, ci := range cands[1:] {
+			if x := contrastIdx(ci, on); x > bestC {
+				best, bestC = ci, x
+			}
+			if bestC >= minText {
+				break
+			}
+		}
+		return best
+	}
+
+	body := bg
+	selText := c(p.Selection.Text)
+
+	// Cursor row: the palette's selection background when it is actually
+	// distinguishable, otherwise a neutral step off the body.
+	rowBg := c(r.Sel)
+	if contrastIdx(body, rowBg) < minRowVsBody {
+		rowBg = stepAway(p.Primary.Background, p.Primary.Foreground, 0.16, minRowVsBody)
+	}
+	rowFg := readable(rowBg, fg, selText, bg)
+
+	// Cursor column: a quieter tint, since it spans every visible row. Kept
+	// clear of the row colour so the two remain telling apart.
+	col := stepAway(p.Primary.Background, p.Primary.Foreground, 0.08, minColVsBody)
+	if contrastIdx(col, rowBg) < 1.10 {
+		col = stepAway(p.Primary.Background, p.Primary.Foreground, 0.24, minColVsBody)
+	}
+	colFg := readable(col, fg, bg)
+
+	// Cursor cell: the one place that says exactly where you are, so it uses
+	// the accent outright rather than a tint of it.
+	cellBg := c(r.Accent)
+	if contrastIdx(cellBg, rowBg) < minCellVsRow || contrastIdx(cellBg, body) < minCellVsRow {
+		cellBg = c(r.Accent2)
+	}
+	if contrastIdx(cellBg, rowBg) < minCellVsRow {
+		cellBg = stepAway(p.Primary.Background, p.Primary.Foreground, 0.45, minCellVsRow)
+	}
+	cellFg := readable(cellBg, bg, fg)
+
+	// Foreground-only marks (hidden-column arrows, row notes) carry no
+	// background, so they also land on the cursor row. A palette whose
+	// selection is a saturated colour rather than a neutral step -- GitHub
+	// Dark's is a deep blue -- drops them out of legibility there even though
+	// they read fine on the sheet body. Lift them until they clear both.
+	onCursor := func(base string) int {
+		i := c(base)
+		ok := func(x int) bool {
+			return contrastIdx(x, body) >= minOnCursor && contrastIdx(x, rowBg) >= minOnCursor
+		}
+		if ok(i) {
+			return i
+		}
+		for t := 0.0; t <= 1.0; t += 0.04 {
+			if x := c(Mix(base, p.Primary.Foreground, t)); ok(x) {
+				return x
+			}
+		}
+		return fg
+	}
+	hiddenCol, noteRow := onCursor(r.Dim), onCursor(r.Warn)
+	keyCol, selRow := onCursor(r.Accent2), onCursor(r.Accent)
 
 	opts := [][2]string{
 		// sheet body
@@ -345,11 +464,12 @@ func VisiData(p *Palette) string {
 		{"color_bottom_hdr", fmt.Sprintf("underline %d on %d", fg, panel)},
 		{"color_current_hdr", fmt.Sprintf("bold %d on %d", bg, accent)},
 		{"color_column_sep", fmt.Sprintf("%d on %d", line, bg)},
-		{"color_key_col", fmt.Sprintf("%d", accent2)},
-		{"color_hidden_col", fmt.Sprintf("%d", dim)},
-		{"color_current_row", fmt.Sprintf("on %d", sel)},
-		{"color_current_col", fmt.Sprintf("on %d", col)},
-		{"color_selected_row", fmt.Sprintf("%d", accent)},
+		{"color_key_col", fmt.Sprintf("%d", keyCol)},
+		{"color_hidden_col", fmt.Sprintf("%d", hiddenCol)},
+		{"color_current_row", fmt.Sprintf("%d on %d", rowFg, rowBg)},
+		{"color_current_col", fmt.Sprintf("%d on %d", colFg, col)},
+		{"color_current_cell", fmt.Sprintf("bold %d on %d", cellFg, cellBg)},
+		{"color_selected_row", fmt.Sprintf("%d", selRow)},
 		{"color_readonly", fmt.Sprintf("on %d", readonly)},
 		// menu bar and helpbox
 		{"color_menu", fmt.Sprintf("%d on %d", fg, panel)},
@@ -359,13 +479,13 @@ func VisiData(p *Palette) string {
 		// status bars, sidebar, command palette
 		{"color_status", fmt.Sprintf("%d on %d", fg, panel)},
 		{"color_active_status", fmt.Sprintf("bold %d on %d", bg, accent2)},
-		{"color_inactive_status", fmt.Sprintf("%d on %d", dim, panel)},
+		{"color_inactive_status", fmt.Sprintf("%d on %d", dimPanel, panel)},
 		{"color_top_status", fmt.Sprintf("underline %d on %d", fg, panel)},
 		{"color_highlight_status", fmt.Sprintf("%d on %d", bg, good)},
 		{"color_status_replay", fmt.Sprintf("%d", good)},
-		{"color_longname_status", fmt.Sprintf("%d", dim)},
-		{"color_longname_guide", fmt.Sprintf("%d", dim)},
-		{"color_guide_unwritten", fmt.Sprintf("%d on %d", dim, bg)},
+		{"color_longname_status", fmt.Sprintf("%d", dimPanel)},
+		{"color_longname_guide", fmt.Sprintf("%d", dimPanel)},
+		{"color_guide_unwritten", fmt.Sprintf("%d on %d", dimBody, bg)},
 		{"color_sidebar", fmt.Sprintf("%d on %d", fg, panel)},
 		{"color_sidebar_title", fmt.Sprintf("bold %d on %d", bg, accent)},
 		{"color_cmdpalette", fmt.Sprintf("%d on %d", fg, panel)},
@@ -377,20 +497,20 @@ func VisiData(p *Palette) string {
 		{"color_keystrokes", fmt.Sprintf("bold %d on %d", accent, panel)},
 		// editing and pending edits
 		{"color_edit_cell", fmt.Sprintf("%d on %d", bg, accent2)},
-		{"color_edit_unfocused", fmt.Sprintf("%d on %d", dim, panel)},
+		{"color_edit_unfocused", fmt.Sprintf("%d on %d", dimPanel, panel)},
 		{"color_add_pending", fmt.Sprintf("%d", good)},
 		{"color_change_pending", fmt.Sprintf("reverse %d", warn)},
 		{"color_delete_pending", fmt.Sprintf("%d", bad)},
 		{"color_note_pending", fmt.Sprintf("bold %d", good)},
-		{"color_note_row", fmt.Sprintf("%d", warn)},
+		{"color_note_row", fmt.Sprintf("%d", noteRow)},
 		{"color_note_type", fmt.Sprintf("%d", accent)},
 		// messages and graphs
 		{"color_error", fmt.Sprintf("%d", bad)},
 		{"color_warning", fmt.Sprintf("%d", warn)},
 		{"color_working", fmt.Sprintf("%d", good)},
 		{"color_currency_neg", fmt.Sprintf("%d", bad)},
-		{"color_graph_axis", fmt.Sprintf("bold %d", dim)},
-		{"color_graph_hidden", fmt.Sprintf("%d", dim)},
+		{"color_graph_axis", fmt.Sprintf("bold %d", dimBody)},
+		{"color_graph_hidden", fmt.Sprintf("%d", dimBody)},
 		{"color_graph_selected", fmt.Sprintf("bold %d", accent)},
 	}
 

@@ -66,3 +66,51 @@ def open_csv(p, *args, **kwargs):
 
 
 vd.open_csv = open_csv
+
+
+# Expand JSON *text* columns with `(`.
+#
+# VisiData's expand-col dispatches on the cell value's type (features/
+# expand_cols.py registers dict and list), so a column holding JSON as a string
+# -- exactly what a CSV or a psql result gives you -- does nothing when you
+# press `(`. Parse those cells into real objects first, then hand off to the
+# built-in expander. Columns that already hold containers are untouched, so this
+# only ever adds behaviour.
+import json as _json
+
+from visidata import Column, Sheet
+
+
+def _looks_like_json(v):
+    return isinstance(v, str) and v.lstrip()[:1] in ('{', '[')
+
+
+@Sheet.api
+def expand_col_or_json(sheet, col):
+    sample = []
+    for r in sheet.rows[:20]:
+        try:
+            sample.append(col.getValue(r))
+        except Exception:
+            pass
+
+    if any(_looks_like_json(v) for v in sample):
+        def _getter(c, r, _col=col):
+            v = _col.getValue(r)
+            if isinstance(v, str):
+                try:
+                    return _json.loads(v)
+                except Exception:
+                    return None
+            return v
+
+        parsed = Column(col.name + '_json', getter=_getter)
+        sheet.addColumn(parsed, index=sheet.columns.index(col) + 1)
+        col.hide()
+        col = parsed
+
+    sheet.expand_cols_deep([col], depth=1)
+
+
+Sheet.addCommand('(', 'expand-col', 'expand_col_or_json(cursorCol)',
+                 'expand current column of containers one level, parsing JSON text first')
