@@ -132,6 +132,18 @@ return {
       { "<leader>Dd", "<cmd>DBUIToggle<cr>", desc = "Toggle DBUI (dadbod)" },
     },
     init = function()
+      -- Postgres creates a pg_temp_N / pg_toast_temp_N schema pair per
+      -- backend slot the first time that session makes a temp table, and
+      -- never drops them, so the drawer fills up with empty system schemas.
+      -- Patterns are Vim regexes tested with match(), which is unanchored,
+      -- so anchor them to avoid hiding a user schema that merely contains
+      -- one of these names.
+      vim.g.db_ui_hide_schemas = {
+        [[^pg_toast$]],
+        [[^pg_temp_\d\+$]],
+        [[^pg_toast_temp_\d\+$]],
+      }
+
       -- Make the results buffer usable. ~/.psqlrc emits CSV for dadbod (and
       -- only for dadbod), which is what lets the two viewers below treat these
       -- results as real tabular data instead of pre-formatted text.

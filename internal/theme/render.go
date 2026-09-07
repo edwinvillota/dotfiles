@@ -147,7 +147,7 @@ func YaziFlavor(p *Palette) string {
 overall = { bg = "%s" }
 
 [mgr]
-cwd = "%s"
+cwd = { fg = "%s" }
 
 hovered = { bg = "%s", bold = true }
 
