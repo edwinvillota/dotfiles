@@ -17,13 +17,21 @@ image_quality = 85
 
 [opener]
 edit = [
-  { run = 'nvim "$@"', desc = "nvim", block = true, for = "unix" },
+  { run = 'nvim %s', desc = "nvim", block = true, for = "unix" },
 ]
 open = [
-  { run = 'open "$@"', desc = "Open with macOS", for = "macos" },
+  { run = 'open %s', desc = "Open with macOS", for = "macos" },
+]
+# yazi 26.8 deprecated the $@ / $1 shell parameters in opener rules in favour of
+# %s (all selected paths) and %s1 (the first one); with $@ the command received
+# no arguments at all, so `vd` opened a directory sheet for the cwd.
+# VisiData for tabular files. The .visidatarc sniffs the delimiter, so the same
+# opener handles comma-, semicolon-, tab- and pipe-separated files.
+visidata = [
+  { run = 'vd %s', desc = "visidata", block = true, for = "unix" },
 ]
 reveal = [
-  { run = 'open -R "$1"', desc = "Reveal in Finder", for = "macos" },
+  { run = 'open -R %s1', desc = "Reveal in Finder", for = "macos" },
 ]
 
 [open]
@@ -34,6 +42,10 @@ prepend_rules = [
   # image opens it in the real macOS viewer; the preview is just the thumbnail.
   { mime = "**/image/*", use = [ "open", "reveal", "edit" ] },
   { mime = "**/{audio,video}/*", use = [ "open", "reveal" ] },
+  # Tabular data opens in VisiData on Enter; `o` still offers nvim.
+  { url = "*.{csv,CSV,tsv,TSV,psv,PSV}", use = [ "visidata", "edit", "open", "reveal" ] },
+  { mime = "**/text/csv", use = [ "visidata", "edit", "open", "reveal" ] },
+  { mime = "**/text/tab-separated-values", use = [ "visidata", "edit", "open", "reveal" ] },
   { mime = "**/application/pdf", use = [ "open", "reveal" ] },
 ]
 

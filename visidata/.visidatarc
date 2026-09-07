@@ -114,3 +114,96 @@ def expand_col_or_json(sheet, col):
 
 Sheet.addCommand('(', 'expand-col', 'expand_col_or_json(cursorCol)',
                  'expand current column of containers one level, parsing JSON text first')
+
+
+# Copy the current column to the system clipboard as a *single delimited line*.
+#
+# The built-in `gzY` (syscopy-cells) round-trips the column through a saver, so
+# it lands in the clipboard one value per line -- the wrong shape for a SQL
+# `IN (...)`, a config list, or a chat message. It also hard-fails with "no rows
+# selected" when nothing is selected. These take the selected rows, or the whole
+# column when the selection is empty, and pipe the joined text straight to
+# options.clipboard_copy_cmd.
+from visidata import TableSheet
+
+
+@TableSheet.api
+def syscopy_col_joined(sheet, sep=None, quote=''):
+    rows = sheet.selectedRows or sheet.rows
+    if not rows:
+        vd.warning('no rows to copy')
+        return
+
+    col = sheet.cursorCol
+    vals = [col.getDisplayValue(r) for r in rows]
+
+    if sep is None:
+        sep = vd.input('join %d %s with: ' % (len(vals), col.name), value=', ')
+
+    if quote:
+        # double the quote char inside the value, SQL/CSV style
+        vals = [quote + v.replace(quote, quote * 2) + quote for v in vals]
+
+    sheet.syscopyValue(sep.join(vals))
+    vd.status('copied %d %s to system clipboard' % (len(vals), col.name))
+
+
+TableSheet.addCommand('gzL', 'syscopy-col-joined', 'syscopy_col_joined()',
+                      'copy current column (selected rows, or all) to system clipboard joined by an input separator')
+TableSheet.addCommand('gzQ', 'syscopy-col-sqllist', 'syscopy_col_joined(sep=", ", quote="\'")',
+                      "copy current column to system clipboard as a quoted, comma-separated SQL IN-list")
+
+
+# --- JSON viewing -----------------------------------------------------------
+#
+# A JSON blob in a psql/CSV result is a wall of unreadable text in a 30-column
+# cell. `(` above turns it into columns; these three make it readable *in place*.
+
+from visidata import BaseSheet, PyobjSheet
+
+
+def _parse_json_cell(v):
+    'Return the object for a JSON-ish cell value, or None if it is not one.'
+    if isinstance(v, (dict, list)):
+        return v
+    if _looks_like_json(v):
+        try:
+            return _json.loads(v)
+        except Exception:
+            return None
+    return None
+
+
+@BaseSheet.cached_property
+def default_sidebar(sheet):
+    'Pretty-print the current cell when it holds JSON; else the stock sidebar.'
+    try:
+        obj = _parse_json_cell(sheet.cursorCol.getValue(sheet.cursorRow))
+        if obj is not None:
+            body = _json.dumps(obj, indent=2, ensure_ascii=False, default=str)
+            return f'# json: {sheet.cursorCol.name}\n{body}'
+    except Exception:
+        pass
+
+    # stock behaviour: format options.disp_sidebar_fmt
+    fmt = sheet.options.disp_sidebar_fmt
+    if not fmt:
+        return ''
+    return sheet.formatString(fmt, help=sheet.formatter_helpstr)
+
+
+@Sheet.api
+def open_json_cell(sheet):
+    'Push the current cell parsed as JSON, to drill into nested structures.'
+    obj = _parse_json_cell(sheet.cursorCol.getValue(sheet.cursorRow))
+    if obj is None:
+        vd.warning('cell is not JSON')
+        return
+    vd.push(PyobjSheet(f'{sheet.name}_{sheet.cursorCol.name}', source=obj))
+
+
+Sheet.addCommand('z(', 'open-cell-json', 'open_json_cell()',
+                 'open current cell parsed as JSON as a new sheet')
+
+# readable output from `Ctrl+S foo.json`, instead of one giant line
+vd.options.json_indent = 2

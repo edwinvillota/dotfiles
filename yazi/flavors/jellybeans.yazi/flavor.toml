@@ -8,7 +8,7 @@
 overall = { bg = "#121212" }
 
 [mgr]
-cwd = "#b1d8f6"
+cwd = { fg = "#b1d8f6" }
 
 hovered = { bg = "#474e91", bold = true }
 

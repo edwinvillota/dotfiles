@@ -1,0 +1,31 @@
+# sqlfluff needs an explicit dialect or it refuses to run at all.
+#
+# Neovim runs `sqlfluff fix` on save (see nvim/lua/plugins/sql.lua), so every
+# fixable rule below is applied automatically. Only the unfixable ones surface
+# as diagnostics. Capitalisation and aliasing policies are set explicitly so
+# the formatter enforces one style instead of copying whatever the file used
+# first ("consistent" mode).
+[sqlfluff]
+dialect = postgres
+max_line_length = 100
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.identifiers]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower
+
+[sqlfluff:rules:capitalisation.types]
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:aliasing.column]
+aliasing = explicit
+
+[sqlfluff:rules:aliasing.table]
+aliasing = explicit

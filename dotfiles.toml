@@ -102,6 +102,11 @@ only = ["config.toml", "saved_queries/*"]   # `history` stays local
 src = "psql/.psqlrc"
 dest = "~/.psqlrc"
 
+# Read by sqlfluff (linter + formatter) from Neovim; no project-local config.
+[unit.sqlfluff]
+src = "sqlfluff/.sqlfluff"
+dest = "~/.sqlfluff"
+
 [unit.visidata]
 src = "visidata/.visidatarc"
 dest = "~/.visidatarc"
