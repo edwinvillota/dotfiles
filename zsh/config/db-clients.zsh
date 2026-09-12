@@ -95,7 +95,8 @@ chart() {
         print "       chart -f query.sql        run a query from a file"
         print "       chart -i results.csv      plot a CSV file"
         print "       ... | chart               plot CSV on stdin"
-        print "  options: -t line|bar|barh|scatter|hist|box  -y col1,col2  -x col"
+        print "  options: -t line|bar|barh|barstack|barhstack|scatter|hist|box"
+        print "           -y col1,col2  -x col"
         print "           -T title  -W width  -H height"
         return 0 ;;
       -f|--file)

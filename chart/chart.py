@@ -108,7 +108,8 @@ def main():
     ap = argparse.ArgumentParser(prog="chart", add_help=True)
     ap.add_argument("-i", "--input", help="CSV file (default: stdin)")
     ap.add_argument("-t", "--type",
-                    choices=["auto","line","bar","barh","scatter","hist","box"],
+                    choices=["auto","line","bar","barh","barstack","barhstack",
+                             "scatter","hist","box"],
                     default="auto")
     ap.add_argument("-T", "--title", default=None)
     ap.add_argument("-W", "--width", type=int, default=None)
@@ -166,8 +167,9 @@ def main():
     # file descriptor. It also honours $COLUMNS/$LINES and works when stdout is
     # a pipe, so there is no isatty() branch to get wrong.
     term = shutil.get_terminal_size((100, 30))
-    fig.plot_size(args.width or max(40, min(term.columns - 2, 200)),
-                  args.height or max(12, min(term.lines - 4, 50)))
+    plot_w = args.width or max(40, min(term.columns - 2, 200))
+    plot_h = args.height or max(12, min(term.lines - 4, 50))
+    fig.plot_size(plot_w, plot_h)
 
     title = args.title or (f"{', '.join(ynames)} by {xname}" if ynames else xname)
 
@@ -190,18 +192,81 @@ def main():
             die("box needs at least one numeric column")
         fig.draw(fig.box(ynames, series))
 
-    elif ctype in ("bar", "barh"):
+    elif ctype in ("bar", "barh", "barstack", "barhstack"):
         labels = cols[xname]
         if not ynames:
             die("bar needs a numeric column besides the x column")
         heights = [[as_float(v) or 0.0 for v in cols[y]] for y in ynames]
-        marks = [plt.marker(symbol="full", pixel=PALETTE[i % len(PALETTE)])
-                 for i in range(len(ynames))]
-        kw = {"marker": marks if len(ynames) > 1 else marks[0]}
-        if ctype == "barh":
-            kw["orientation"] = "h"
-        bars = fig.bar(labels, heights if len(ynames) > 1 else heights[0], **kw)
-        fig.draw(bars)
+        horiz = ctype in ("barh", "barhstack")
+        stacked = ctype in ("barstack", "barhstack")
+        orient = "h" if horiz else "v"
+        N, K = len(ynames), len(labels)
+
+        def bar_mark(i):
+            return plt.marker(symbol="full", pixel=PALETTE[i % len(PALETTE)])
+
+        if N == 1:
+            # one series needs no legend - the title names it
+            fig.draw(fig.bar(labels, heights[0], orientation=orient,
+                             marker=bar_mark(0)))
+        else:
+            # Each series is drawn as its OWN bar signal so it can carry its own
+            # label: plotext's grouped/stacked bar takes all series in one call
+            # and signal.label() accepts a single string, so that route can only
+            # ever produce one legend entry. Positions are therefore placed by
+            # hand - side by side for grouped, and as floating bars stacked on a
+            # running baseline for stacked.
+            pos = [k + 1 for k in range(K)]
+            if stacked:
+                base = [0.0] * K
+                for i, y in enumerate(ynames):
+                    tops = [base[k] + heights[i][k] for k in range(K)]
+                    b = fig.bar(pos, list(base), tops, width=0.6,
+                                orientation=orient, marker=bar_mark(i))
+                    b.label(y)
+                    fig.draw(b)
+                    base = tops
+                top = max(base) if base else 1.0
+                low = min([0.0] + [min(h) for h in heights])
+            else:
+                w = 0.8 / N
+                for i, y in enumerate(ynames):
+                    xs = [p + (i - (N - 1) / 2.0) * w for p in pos]
+                    b = fig.bar(xs, heights[i], width=w, orientation=orient,
+                                marker=bar_mark(i))
+                    b.label(y)
+                    fig.draw(b)
+                top = max(max(h) for h in heights)
+                low = min(min(h) for h in heights)
+
+            fig.ruler("y" if horiz else "x").ticks(pos, labels)
+
+            # The legend is painted over the canvas, so reserve space for it.
+            # Negative values mean the baseline is not the axis start and the
+            # reserved band cannot be computed this way - skip it and let the
+            # legend sit where plotext puts it.
+            if low >= 0 and top > 0:
+                if horiz:
+                    # bars grow left to right, so the clear space is a column on
+                    # the right: widen the value axis until they stop short of it
+                    gutter = max((len(str(v)) for v in labels), default=5) + 1
+                    legend_w = max(len(y) for y in ynames) + 6
+                    canvas = max(10, plot_w - gutter - 2)
+                    denom = max(1, canvas - legend_w - 2)
+                    fig.ruler("x").lim(0, top * canvas / denom)
+                    fig.legend(x=canvas - 1, y=0, ha="right", va="top")
+                else:
+                    # bars grow upward across the whole width, so headroom at the
+                    # top is not enough - the legend is tall and the leftmost
+                    # group ends up behind it. Reserve columns on the right by
+                    # extending the category axis, and anchor the legend there.
+                    gutter = 6                     # width of the y tick labels
+                    legend_w = max(len(y) for y in ynames) + 6
+                    canvas = max(10, plot_w - gutter - 2)
+                    free = max(1, canvas - legend_w - 2)
+                    fig.ruler("x").lim(0.5, K + 0.5 + K * (legend_w + 2) / free)
+                    fig.ruler("y").lim(0, top * 1.06)
+                    fig.legend(x=canvas - 1, y=0, ha="right", va="top")
 
     else:  # line / scatter
         if not ynames:
