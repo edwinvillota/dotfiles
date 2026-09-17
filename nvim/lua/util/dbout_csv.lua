@@ -6,6 +6,8 @@
 -- These replace them:
 --   * foreign_key(): open the row a foreign key value points at, or the
 --                    rows pointing at a referenced key            (gd)
+--   * jump()/close_jump(): move through, and close, the results those
+--                    jumps stack up in the window     ([r, ]r, q)
 --   * select_cell(): `ic` text object for the value under the cursor (vic/yic)
 --   * yank_header(): yank the column names                       (yh)
 --
@@ -195,6 +197,141 @@ local function sql_literal(s)
   return "'" .. s:gsub("'", "''") .. "'"
 end
 
+local function ellipsis(s, n)
+  if vim.fn.strchars(s) <= n then
+    return s
+  end
+  return vim.fn.strcharpart(s, 0, n - 1) .. "…"
+end
+
+-- Jumps stay inside the results window. Each one takes the window over and is
+-- pushed onto a stack kept on that window, which the winbar draws as a strip
+-- of tabs -- so the surrounding layout (the drawer, the query buffer) is left
+-- alone, and the query a jump came from is still there to go back to.
+--
+-- That is only possible because a stacked buffer is flipped to
+-- `bufhidden=hide`. dadbod gives every dbout buffer `bufhidden=delete`
+-- (db.vim:410), so the moment a jump took the window, the results it was
+-- followed from were unloaded -- rows, `b:db_input` and all -- rather than
+-- merely displaced. That is the real reason going back never brought the same
+-- query back. It is done here, on the buffers actually stacked, rather than
+-- for every dbout buffer from a FileType autocmd: those run before dadbod's
+-- own BufReadPost sets the option, so it would simply be overwritten, and
+-- results nobody jumped from are better left to dadbod to clean up.
+--
+-- In exchange these buffers are ours to delete: when closed, dropped from the
+-- stack, or left behind by an unrelated query landing in the window.
+
+local function discard(buf)
+  if vim.api.nvim_buf_is_loaded(buf) and vim.fn.bufwinid(buf) == -1 then
+    pcall(vim.api.nvim_buf_delete, buf, { force = true })
+  end
+end
+
+-- What a tab is called: the step that opened it, or for a root query the first
+-- table it reads.
+local function label_of(buf)
+  local label = vim.b[buf].dbout_label
+  if not label or label == "" then
+    label = "results"
+    local input = vim.b[buf].db_input
+    if input and vim.fn.filereadable(input) == 1 then
+      local tables = M.query_tables(table.concat(vim.fn.readfile(input), "\n"))
+      label = tables[1] or label
+    end
+    vim.b[buf].dbout_label = label
+  end
+  return label
+end
+
+-- The window's stack and where in it we are, dropping buffers that are gone.
+-- A buffer that is not on the stack at all is an unrelated query that has just
+-- landed in the window, which makes it a new root and the old stack rubbish.
+local function sync(win)
+  local cur = vim.api.nvim_win_get_buf(win)
+  local stack, idx = {}, nil
+  for _, buf in ipairs(vim.w[win].dbout_stack or {}) do
+    if vim.api.nvim_buf_is_loaded(buf) then
+      table.insert(stack, buf)
+      if buf == cur then
+        idx = #stack
+      end
+    end
+  end
+  if not idx then
+    for _, buf in ipairs(stack) do
+      discard(buf)
+    end
+    stack, idx = { cur }, 1
+  end
+  for _, buf in ipairs(stack) do
+    vim.bo[buf].bufhidden = "hide"
+  end
+  vim.w[win].dbout_stack = stack
+  return stack, idx
+end
+
+-- One tab per stack entry, the current one highlighted. Hidden entirely while
+-- there is nothing to move between, so an ordinary query keeps the whole
+-- window.
+local function render(win)
+  local stack, idx = sync(win)
+  if #stack < 2 then
+    vim.wo[win][0].winbar = ""
+    return
+  end
+  local tabs = {}
+  for i, buf in ipairs(stack) do
+    local hl = i == idx and "%#TabLineSel#" or "%#TabLine#"
+    table.insert(tabs, hl .. " " .. label_of(buf):gsub("%%", "%%%%") .. " ")
+  end
+  vim.wo[win][0].winbar = table.concat(tabs, "%#WinBar#▏") .. "%#WinBar#"
+end
+
+-- Move `delta` tabs along the stack. The buffers are all still loaded, so this
+-- is a plain buffer swap -- no query is re-run.
+function M.jump(delta)
+  local win = vim.api.nvim_get_current_win()
+  local stack, idx = sync(win)
+  local target = stack[idx + delta]
+  if not target then
+    vim.notify(
+      delta < 0 and "Results: already at the first" or "Results: already at the last",
+      vim.log.levels.WARN
+    )
+    return false
+  end
+  vim.api.nvim_win_set_buf(win, target)
+  render(win)
+  return true
+end
+
+-- Close the current jump and land back on the results it was followed from.
+-- False at a root query, which is the caller's cue to close the window itself.
+function M.close_jump()
+  local win = vim.api.nvim_get_current_win()
+  local stack, idx = sync(win)
+  if idx == 1 then
+    return false
+  end
+  local gone = table.remove(stack, idx)
+  vim.w[win].dbout_stack = stack
+  vim.api.nvim_win_set_buf(win, stack[idx - 1])
+  discard(gone)
+  render(win)
+  return true
+end
+
+-- Every results buffer this window is holding, for the caller to clean up when
+-- it closes the window for good.
+function M.stack_bufs(win)
+  win = win or vim.api.nvim_get_current_win()
+  if not vim.api.nvim_win_is_valid(win) then
+    return {}
+  end
+  return (sync(win))
+end
+
 -- Tables named after FROM / JOIN in the query that produced this buffer, used
 -- to prefer the right foreign key when several tables share a column name.
 function M.query_tables(sql)
@@ -313,16 +450,46 @@ function M.foreign_key()
     return
   end
 
+  -- `:DB` pedits, which lands in the tab's preview window -- the very window
+  -- these results are in. That is what we want: the jump takes the window over
+  -- and is pushed onto its stack, leaving the rest of the layout alone. The
+  -- results it came from stay loaded and one `q` away.
   local function open(m)
+    local win = vim.api.nvim_get_current_win()
     local file = vim.fn.tempname() .. ".sql"
     vim.fn.writefile(
       { ("select * from %s where %s = %s;"):format(m.table, m.column, sql_literal(f.value)) },
       file
     )
+
+    -- Jumping from the middle of the stack drops whatever was ahead, the way
+    -- following a link partway through a history does.
+    local stack, idx = sync(win)
+    for i = #stack, idx + 1, -1 do
+      discard(table.remove(stack, i))
+    end
+
     -- Pass the URL by variable: fnameescape() would turn `?` into `\?`, which
-    -- :DB no longer recognises as a URL, and then silently runs nothing.
-    vim.b[buf].dbout_fk_url = url
-    vim.cmd("DB b:dbout_fk_url < " .. vim.fn.fnameescape(file))
+    -- :DB no longer recognises as a URL, and then silently runs nothing. It is
+    -- global rather than buffer-local because vim.ui.select's callback may not
+    -- have restored the buffer this was started from.
+    vim.g.dbout_fk_url = url
+    local opened, err = pcall(vim.cmd, "DB g:dbout_fk_url < " .. vim.fn.fnameescape(file))
+    vim.g.dbout_fk_url = nil
+    if not opened then
+      vim.notify("Foreign key jump: " .. err, vim.log.levels.ERROR)
+      return
+    end
+
+    -- pedit does not move the cursor when it is run from outside the preview
+    -- window, so make sure the jump is what is focused either way.
+    vim.api.nvim_set_current_win(win)
+    local landed = vim.api.nvim_win_get_buf(win)
+    vim.bo[landed].bufhidden = "hide"
+    vim.b[landed].dbout_label = ("%s.%s = %s"):format(m.table, m.column, ellipsis(f.value, 40))
+    table.insert(stack, landed)
+    vim.w[win].dbout_stack = stack
+    render(win)
   end
 
   if #matches == 1 then
