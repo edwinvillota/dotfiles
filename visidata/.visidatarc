@@ -159,7 +159,7 @@ TableSheet.addCommand('gzQ', 'syscopy-col-sqllist', 'syscopy_col_joined(sep=", "
 # A JSON blob in a psql/CSV result is a wall of unreadable text in a 30-column
 # cell. `(` above turns it into columns; these three make it readable *in place*.
 
-from visidata import BaseSheet, PyobjSheet
+from visidata import BaseSheet, PyobjSheet, TextSheet
 
 
 def _parse_json_cell(v):
@@ -174,14 +174,31 @@ def _parse_json_cell(v):
     return None
 
 
+def _cell_overflows(col, text):
+    'True when the cell display is clipped by its column width, so the sidebar is worth it.'
+    if not text:
+        return False
+    if '\n' in text:
+        return True
+    w = col.width or 0
+    return w > 0 and len(text) > w - 1
+
+
 @BaseSheet.cached_property
 def default_sidebar(sheet):
-    'Pretty-print the current cell when it holds JSON; else the stock sidebar.'
+    '''Show the current cell in the sidebar: pretty-printed when it holds JSON,
+    in full when it is too long (or too multi-line) to fit its column. Falls back
+    to the stock sidebar otherwise.'''
     try:
-        obj = _parse_json_cell(sheet.cursorCol.getValue(sheet.cursorRow))
+        col, row = sheet.cursorCol, sheet.cursorRow
+        obj = _parse_json_cell(col.getValue(row))
         if obj is not None:
             body = _json.dumps(obj, indent=2, ensure_ascii=False, default=str)
-            return f'# json: {sheet.cursorCol.name}\n{body}'
+            return f'# json: {col.name}\n{body}'
+
+        text = col.getDisplayValue(row)
+        if _cell_overflows(col, text):
+            return f'# {col.name}\n{text}'
     except Exception:
         pass
 
@@ -204,6 +221,27 @@ def open_json_cell(sheet):
 
 Sheet.addCommand('z(', 'open-cell-json', 'open_json_cell()',
                  'open current cell parsed as JSON as a new sheet')
+
+
+@Sheet.api
+def open_cell_text(sheet):
+    'Push the current cell as a wrapped text sheet: the whole value, however long.'
+    col, row = sheet.cursorCol, sheet.cursorRow
+    obj = _parse_json_cell(col.getValue(row))
+    if obj is not None:
+        text = _json.dumps(obj, indent=2, ensure_ascii=False, default=str)
+    else:
+        text = col.getDisplayValue(row)
+    if not text:
+        vd.warning('cell is empty')
+        return
+    vs = TextSheet(f'{sheet.name}_{col.name}', source=text.splitlines())
+    vs.options.wrap = True  # long single-line values are the whole point
+    vd.push(vs)
+
+
+Sheet.addCommand('zV', 'view-cell', 'open_cell_text()',
+                 'open current cell as a full, word-wrapped text sheet')
 
 # readable output from `Ctrl+S foo.json`, instead of one giant line
 vd.options.json_indent = 2
