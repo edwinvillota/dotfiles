@@ -1,6 +1,20 @@
 -- SQL tooling overrides for LazyVim's lang.sql extra.
 
 return {
+  -- Complete right after punctuation (`sum(pop_`, `a*b`); see
+  -- lua/util/dadbod_blink.lua.
+  {
+    "saghen/blink.cmp",
+    optional = true,
+    opts = {
+      sources = {
+        providers = {
+          dadbod = { module = "util.dadbod_blink" },
+        },
+      },
+    },
+  },
+
   -- LazyVim runs `sqlfluff format --dialect=ansi`. Two changes:
   --   * `fix` instead of `format`: format only applies layout/capitalisation,
   --     while fix also applies the other auto-fixable rules (explicit `as`,
@@ -155,6 +169,19 @@ return {
 
         let s:pg = vim_dadbod_completion#schemas#get('postgres')
         let s:pg.should_quote = function('PgShouldQuote')
+
+        " Without a table/alias in front, completion offers every cached
+        " column, sorted by name and capped at 200. The stock query caches all
+        " of INFORMATION_SCHEMA.COLUMNS, which is ~95% pg_catalog and
+        " information_schema, so after typing one or two letters the user's own
+        " columns fall past the cap (on practical_sql, `s` matches 296 columns,
+        " 9 of them real). Cache user schemas only. Trade-off: columns of
+        " system catalog tables (pg_class.relname, ...) no longer complete.
+        let s:pg_user_columns = " FROM INFORMATION_SCHEMA.COLUMNS
+              \ WHERE TABLE_SCHEMA NOT IN ('pg_catalog', 'information_schema')"
+        let s:pg.column_query = 'SELECT TABLE_NAME,COLUMN_NAME' . s:pg_user_columns
+              \ . ' ORDER BY COLUMN_NAME ASC'
+        let s:pg.count_column_query = 'SELECT COUNT(*) AS total' . s:pg_user_columns
       ]])
     end,
   },
