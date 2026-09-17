@@ -31,6 +31,10 @@ mode = "backup-only" # install writes it only if absent; never overwrites
 src = "powerlevel10k/.p10k.zsh"
 dest = "~/.p10k.zsh"
 
+[unit.chart]
+src = "chart"
+dest = "~/.config/chart"
+
 [unit.zellij]
 src = "zellij"
 dest = "~/.config/zellij"

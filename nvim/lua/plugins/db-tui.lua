@@ -147,6 +147,37 @@ return {
       -- Make the results buffer usable. ~/.psqlrc emits CSV for dadbod (and
       -- only for dadbod), which is what lets the two viewers below treat these
       -- results as real tabular data instead of pre-formatted text.
+      -- Query files hold several statements, so neither saving nor <leader>S
+      -- runs the whole buffer (including any INSERT/UPDATE/DROP): <leader>S
+      -- runs the statement under the cursor, or the selection in visual mode.
+      -- The whole file is still `ggVG<leader>S`.
+      vim.g.db_ui_execute_on_save = 0
+
+      -- dadbod-ui's sql ftplugin maps these too, and whichever FileType
+      -- handler runs last would own <leader>S. Turn its sql mappings off and
+      -- recreate the ones kept as-is. The <Plug> targets only exist in DBUI
+      -- query buffers, as with dadbod-ui's own mappings.
+      vim.g.db_ui_disable_mappings_sql = 1
+      -- Its dbout mappings (<C-]>, vic, yh, <leader>R) read psql's aligned
+      -- output, not the CSV ~/.psqlrc produces; replaced in the dbout autocmd.
+      vim.g.db_ui_disable_mappings_dbout = 1
+
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = { "sql", "mysql", "plsql" },
+        group = vim.api.nvim_create_augroup("sql_run_statement", { clear = true }),
+        callback = function(ev)
+          local function map(mode, lhs, rhs, desc)
+            vim.keymap.set(mode, lhs, rhs, { buffer = ev.buf, remap = true, silent = true, nowait = true, desc = desc })
+          end
+          map("n", "<leader>S", function()
+            require("util.sql_statement").run()
+          end, "Run statement under cursor")
+          map("x", "<leader>S", "<Plug>(DBUI_ExecuteQuery)", "Run selection")
+          map("n", "<leader>W", "<Plug>(DBUI_SaveQuery)", "Save query")
+          map("n", "<leader>E", "<Plug>(DBUI_EditBindParameters)", "Edit bind parameters")
+        end,
+      })
+
       vim.api.nvim_create_autocmd("FileType", {
         pattern = "dbout",
         group = vim.api.nvim_create_augroup("dbout_view", { clear = true }),
@@ -219,6 +250,29 @@ return {
                 silent = true,
                 desc = "Leave zoom, else quit results",
               })
+
+              -- dadbod-ui's cell actions assume psql's aligned output and
+              -- break on CSV (g:db_ui_disable_mappings_dbout below turns them
+              -- off); these are CSV-aware replacements. Its `omap ic` is set
+              -- regardless of that flag, hence overriding it here, after it.
+              local csv = require("util.dbout_csv")
+              local function map(mode, lhs, rhs, desc)
+                vim.keymap.set(mode, lhs, rhs, { buffer = ev.buf, silent = true, desc = desc })
+              end
+              map("n", "gd", csv.foreign_key, "Follow foreign key (either direction)")
+              map({ "o", "x" }, "ic", csv.select_cell, "Cell value")
+              -- mini.ai owns `i`/`a` in o/x modes. If `c` comes after
+              -- 'timeoutlen', its `i` wins over the mapping above and reads
+              -- `c` as its treesitter class object, which errors here (no
+              -- dbout parser). Give it the same cell region for `c`.
+              vim.b[ev.buf].miniai_config = {
+                custom_textobjects = {
+                  c = function()
+                    return csv.cell_region()
+                  end,
+                },
+              }
+              map("n", "yh", csv.yank_header, "Yank column names")
             end
           end))
 
