@@ -45,3 +45,20 @@ accent = "#e6b450"
 panel = "#0d1017"
 line = "#1f2430"
 sel = "#131721"
+
+# Snacks-picker colors, hand-tuned before the theme system existed and kept
+# verbatim so ayu-dark renders exactly as it always has. Every other theme
+# derives these from its own palette (see Palette.derivePicker).
+[picker]
+file = "#a3b7cc"
+folder = "#a3ccc7"
+hidden = "#a3c7ff"
+ignored = "#5c6370"
+match = "#cc7e7e"
+selection = "#b7c7a3"
+prompt = "#a3b7cc"
+git_added = "#b7c7a3"
+git_modified = "#a3b7cc"
+git_deleted = "#cc7e7e"
+git_renamed = "#a3ccc7"
+git_untracked = "#d4d4d4"

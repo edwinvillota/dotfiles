@@ -69,7 +69,8 @@ Available: `ayu-dark` (default) · `iceberg` · `jellybeans` · `kanagawa-wave` 
   a commit: `install` re-applies it (post-install hook), `backup` normalizes
   theme lines back to ayu-dark before they reach the repo.
 - Machine-local generated files (ignored by sync): `wezterm/theme.lua`,
-  `nvim/lua/config/theme-active.lua`, `zsh/00-theme.zsh`.
+  `nvim/lua/config/theme-active.lua` (colorscheme name **plus** the Snacks
+  picker colors, read by `lua/config/highlights.lua`), `zsh/00-theme.zsh`.
 - Committed generated assets: `zellij/themes/`, `btop/themes/`,
   `yazi/flavors/` — edit the palette, run `dotfiles theme render`; a unit
   test fails if they drift.

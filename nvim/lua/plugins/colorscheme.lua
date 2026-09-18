@@ -12,7 +12,11 @@ end
 return {
   { "Shatur/neovim-ayu", name = "ayu", lazy = true, opts = { mirage = true } },
   { "cocopon/iceberg.vim", lazy = true },
-  { "nanotech/jellybeans.vim", lazy = true },
+  -- The Lua port, not nanotech/jellybeans.vim. The original is a classic Vim
+  -- colorscheme with no treesitter groups, so every JSX capture fell through
+  -- to one green: tag name, attribute name and string value were the same
+  -- color. This port defines treesitter and LSP semantic tokens.
+  { "WTFox/jellybeans.nvim", lazy = true },
   { "rebelot/kanagawa.nvim", lazy = true },
   { "projekt0n/github-nvim-theme", name = "github-theme", lazy = true },
   { "shaunsingh/nord.nvim", lazy = true },

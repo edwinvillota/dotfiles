@@ -4,10 +4,53 @@
 # and this rc is committed.
 import os as _os
 
+from visidata import vd
+
+# Declared before the theme file is exec'd below, because that is what sets
+# them -- VisiData warns about "unknown option" for anything assigned before it
+# has been registered. The per-column colorizer that reads them is further down.
+_NCOLS = 6
+for _i in range(_NCOLS):
+    _name = 'color_col%d' % _i
+    if vd.options._get(_name) is None:
+        vd.option(_name, '', 'colour of every %dth column' % _NCOLS)
+
 _theme = _os.path.expanduser('~/.visidata/theme.py')
 if _os.path.exists(_theme):
     with open(_theme) as _fp:
         exec(compile(_fp.read(), _theme, 'exec'))
+
+# Colour the sheet by column, the way nvim already colours the same data.
+#
+# csvview paints CsvViewCol0..8 and nvim/lua/plugins/csv.lua cycles those
+# through six syntax groups so no two neighbouring columns share a hue. VisiData
+# draws every cell with color_default, so the same table that is colour-coded in
+# nvim came out flat grey here. `dotfiles theme` writes color_col0..5 from the
+# palette; this turns them into a per-column colorizer.
+#
+# Precedence 1 puts it above color_default (0) and below the cursor row and
+# column (2) and the cursor cell (3), so the cursor still reads on top. Key
+# columns are also precedence 1 and sit earlier in Sheet.colorizers, so they
+# keep their own colour.
+from visidata import Sheet as _Sheet, ColumnColorizer as _ColumnColorizer
+
+def _theme_col_slot(sheet, col, row, value):
+    if row is None:
+        return None  # the header row belongs to color_bottom_hdr
+    cols = sheet.visibleCols
+    cache = getattr(sheet, '_dotfiles_colslots', None)
+    # rebuilt when a column is hidden or added; a pure reorder leaves it stale,
+    # which only swaps two colours around
+    if cache is None or cache.get('n') != len(cols):
+        cache = {'n': len(cols)}
+        for _n, _c in enumerate(cols):
+            cache[id(_c)] = _n % _NCOLS
+        sheet._dotfiles_colslots = cache
+    slot = cache.get(id(col))
+    return None if slot is None else 'color_col%d' % slot
+
+
+_Sheet.colorizers += [_ColumnColorizer(1, None, _theme_col_slot)]
 
 # Auto-detect the CSV delimiter, which VisiData does not do on its own:
 # its csv loader passes options.csv_delimiter (default ",") straight to csv.reader.

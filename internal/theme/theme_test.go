@@ -286,31 +286,93 @@ func TestNormalizeRepo(t *testing.T) {
 // VisiData's defaults are written as "white on black", and the terminal remaps
 // ANSI black to the theme's palette (jellybeans: #929292, a mid grey), so the
 // renderer must emit fixed cube indices only — never a low ANSI number or name.
-func TestVisiDataAvoidsRemappedANSI(t *testing.T) {
-	p, _ := Load("jellybeans")
-	out := VisiData(p)
-	if !strings.Contains(out, "vd.options.color_default = ") {
-		t.Fatal("visidata renderer missing color_default")
-	}
-	re := regexp.MustCompile(`vd\.options\.(color_\w+) = "([^"]*)"`)
-	seen := 0
-	for _, m := range re.FindAllStringSubmatch(out, -1) {
-		seen++
-		for _, tok := range strings.Fields(m[2]) {
-			switch tok {
-			case "on", "bold", "underline", "italic", "reverse":
-				continue
-			}
-			n, err := strconv.Atoi(tok)
-			if err != nil {
-				t.Errorf("%s: %q is not a color index", m[1], tok)
-			} else if n < 16 || n > 255 {
-				t.Errorf("%s: index %d is terminal-remapped or out of range", m[1], n)
+// VisiData is given ANSI slots 0-15 deliberately, which is the opposite of
+// what its stock theme does: the stock `white on black` names slots blindly
+// and paints whatever the active terminal palette happens to hold there,
+// which is how unthemed VisiData ends up grey. A slot is safe only when the
+// palette that defines the remapping puts our exact color in it -- then the
+// terminal hands back the hex we asked for instead of the nearest cube cell,
+// which across these palettes is off by as much as deltaE 24.
+//
+// So the rule this test enforces is not "never use 0-15" but "use a slot only
+// where the hex matches the palette exactly".
+func TestVisiDataSlotsAreExact(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Paint may only return a slot for a color the palette holds in that
+		// slot, and may never miss one it does.
+		probes := []string{
+			p.Primary.Foreground, p.Primary.Background, p.Roles.Accent, p.Roles.Accent2,
+			p.Roles.Good, p.Roles.Warn, p.Roles.Error, p.Roles.Dim, p.Roles.Panel,
+			p.Roles.Line, p.Roles.Sel, p.Selection.Text, p.Cursor.Cursor,
+		}
+		sl := p.ansiSlots()
+		probes = append(probes, sl[:]...)
+		for t2 := 0.0; t2 <= 1.0; t2 += 0.01 {
+			probes = append(probes, Mix(p.Primary.Background, p.Primary.Foreground, t2))
+			probes = append(probes, Mix(p.Roles.Accent, p.Primary.Foreground, t2))
+		}
+		for _, hex := range probes {
+			i := p.Paint(hex)
+			switch {
+			case i < 0 || i > 255:
+				t.Errorf("%s: Paint(%s) = %d, out of range", name, hex, i)
+			case i < 16:
+				if got := sl[i]; !strings.EqualFold(got, hex) {
+					t.Errorf("%s: Paint(%s) = slot %d, which paints %s -- a slot is only allowed on an exact match",
+						name, hex, i, got)
+				}
+			default:
+				if s := p.slot(hex); s >= 0 {
+					t.Errorf("%s: Paint(%s) = cube %d but the palette holds that exact color in slot %d",
+						name, hex, i, s)
+				}
 			}
 		}
-	}
-	if seen < 20 {
-		t.Errorf("only %d color options rendered", seen)
+
+		// and the rendered file may only carry indices produced that way
+		out := VisiData(p)
+		if !strings.Contains(out, "vd.options.color_default = ") {
+			t.Fatal("visidata renderer missing color_default")
+		}
+		re := regexp.MustCompile(`vd\.options\.(color_\w+) = "([^"]*)"`)
+		seen, slots := 0, 0
+		for _, m := range re.FindAllStringSubmatch(out, -1) {
+			seen++
+			for _, tok := range strings.Fields(m[2]) {
+				switch tok {
+				case "on", "bold", "underline", "italic", "reverse":
+					continue
+				}
+				n, err := strconv.Atoi(tok)
+				if err != nil {
+					t.Errorf("%s: %s: %q is not a color index", name, m[1], tok)
+					continue
+				}
+				if n < 0 || n > 255 {
+					t.Errorf("%s: %s: index %d out of range", name, m[1], n)
+					continue
+				}
+				if n < 16 {
+					slots++
+					if p.slot(sl[n]) < 0 {
+						t.Errorf("%s: %s: slot %d is not a palette color", name, m[1], n)
+					}
+				}
+			}
+		}
+		if seen < 20 {
+			t.Errorf("%s: only %d color options rendered", name, seen)
+		}
+		// ayu-dark pins an accent that is not one of its ANSI colors, but every
+		// palette here has several roles that are -- if nothing maps, the
+		// exact-match path has silently stopped working.
+		if slots == 0 {
+			t.Errorf("%s: no color resolved to an ANSI slot, so every color is quantized again", name)
+		}
 	}
 }
 
@@ -324,5 +386,261 @@ func TestXterm256(t *testing.T) {
 	}
 	if n := Xterm256("#929292"); n < 16 {
 		t.Errorf("Xterm256 returned remapped index %d", n)
+	}
+}
+
+// Every theme must resolve a full set of picker colors, and NvimActive must
+// carry them: highlights.lua falls back to ayu-dark for any key it misses, so
+// a gap would silently paint one theme's picker in another theme's colors.
+func TestPickerColorsComplete(t *testing.T) {
+	keys := []string{
+		"file", "folder", "hidden", "ignored", "match", "selection", "prompt",
+		"git_added", "git_modified", "git_deleted", "git_renamed", "git_untracked",
+	}
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		out := NvimActive(p)
+		for _, k := range keys {
+			if !strings.Contains(out, k+" = \"#") {
+				t.Errorf("%s: NvimActive is missing picker.%s", name, k)
+			}
+		}
+	}
+}
+
+// ayu-dark's picker colors were hand-tuned before the theme system existed.
+// They are pinned in its palette.toml so switching themes and coming back
+// leaves the picker exactly as it was.
+func TestAyuPickerPinned(t *testing.T) {
+	p, err := Load("ayu-dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"file": "#a3b7cc", "match": "#cc7e7e", "git_modified": "#a3b7cc",
+		"git_untracked": "#d4d4d4", "ignored": "#5c6370",
+	}
+	got := map[string]string{
+		"file": p.Picker.File, "match": p.Picker.Match, "git_modified": p.Picker.GitModified,
+		"git_untracked": p.Picker.GitUntracked, "ignored": p.Picker.Ignored,
+	}
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("ayu-dark picker.%s = %s, want %s", k, got[k], w)
+		}
+	}
+}
+
+// Git status colors must be visually distinct, or a modified file reads the
+// same as an untracked one -- the bug that made github-dark unusable.
+func TestGitStatusColorsDistinct(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen := map[string]string{}
+		for role, c := range map[string]string{
+			"added": p.Picker.GitAdded, "modified": p.Picker.GitModified,
+			"deleted": p.Picker.GitDeleted, "untracked": p.Picker.GitUntracked,
+		} {
+			if role == "added" || role == "untracked" {
+				continue // both are green by convention
+			}
+			if prev, dup := seen[c]; dup {
+				t.Errorf("%s: git %s and %s are both %s", name, prev, role, c)
+			}
+			seen[c] = role
+		}
+	}
+}
+
+func vdIndices(s string) []int {
+	var out []int
+	for _, f := range strings.Fields(s) {
+		if n, err := strconv.Atoi(f); err == nil {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// VisiData composites color_bottom_hdr at precedence 5 over the last line of
+// the column header, and the header is one line for an ordinary sheet, so
+// color_default_hdr never reaches it. Setting bottom_hdr to the plain
+// foreground is what drew every theme's column names in white.
+func TestVisiDataHeaderCarriesAccent(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := vdIndices(vdOpts(t, name)["color_bottom_hdr"])
+		if len(got) != 2 {
+			t.Errorf("%s: color_bottom_hdr wants a foreground and a background, got %v", name, got)
+			continue
+		}
+		if want := p.Paint(p.Roles.Accent); got[0] != want {
+			t.Errorf("%s: color_bottom_hdr foreground is %d, want the accent %d", name, got[0], want)
+		}
+		if got[0] == p.Paint(p.Primary.Foreground) {
+			t.Errorf("%s: color_bottom_hdr foreground is the plain foreground, so the header reads as unthemed", name)
+		}
+	}
+}
+
+// The 256-color cube has almost no dark saturated cells, so any chrome derived
+// by mixing a dark background toward its foreground quantizes onto the
+// grayscale ramp. A theme built only that way renders VisiData near-monochrome
+// whatever its palette -- gray rules, white column names, white chrome. These
+// six surfaces are where the palette has to land for VisiData to read as
+// themed at all, so every one of them must resolve to a colored index.
+func TestVisiDataIsNotMonochrome(t *testing.T) {
+	required := []string{
+		"color_bottom_hdr",    // column names
+		"color_column_sep",    // the grid
+		"color_key_col",       // key columns
+		"color_selected_row",  // selection
+		"color_current_cell",  // where the cursor is
+		"color_active_status", // the status bar
+	}
+	for _, name := range Names() {
+		o := vdOpts(t, name)
+		for _, k := range required {
+			hued := false
+			for _, i := range vdIndices(o[k]) {
+				if palOf(t, name).hue(i) {
+					hued = true
+				}
+			}
+			if !hued {
+				t.Errorf("%s: %s = %q resolves to no colored index, so it renders gray under every theme", name, k, o[k])
+			}
+		}
+	}
+}
+
+// Column separators draw the grid. `line` is a 12% mix off the background,
+// which quantizes to a single index step and renders the rules invisible, so
+// the renderer walks toward accent2 instead. Check they end up readable.
+func TestVisiDataSeparatorsAreVisible(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := vdIndices(vdOpts(t, name)["color_column_sep"])
+		if len(got) != 1 {
+			t.Fatalf("%s: color_column_sep should be a bare foreground, got %v", name, got)
+		}
+		if c := p.contrastOnBody(got[0]); c < 2.2 {
+			t.Errorf("%s: column separators contrast %.2f against the sheet, want >= 2.20", name, c)
+		}
+	}
+}
+
+// A fuzzy match has to be findable inside the file name it is drawn in.
+// Contrast ratio alone does not catch this: on kanagawa-wave the accent and
+// the foreground scored 1.16 and were both warm and light, so the match read
+// as more text. deltaE is what separates "different color" from "same color".
+func TestPickerMatchStandsOut(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if d := deltaE(p.Picker.Match, p.Picker.File); d < minMatchDelta {
+			t.Errorf("%s: match %s is only deltaE %.1f from the file name %s, want >= %d",
+				name, p.Picker.Match, d, p.Picker.File, minMatchDelta)
+		}
+	}
+}
+
+// Accent colors are tuned against the sheet background, but VisiData also
+// paints them on the panel that menus, popups and the sidebar sit on. On
+// palettes whose panel is a mid-dark gray a muted accent drops under the
+// legibility floor there, which is how the aggregator summary ended up at 3.9
+// on nord. Every foreground VisiData draws on the panel has to clear it.
+func TestVisiDataPanelTextIsLegible(t *testing.T) {
+	floors := map[string]float64{
+		"color_bottom_hdr": 4.5, "color_default_hdr": 4.5, "color_menu": 4.5,
+		"color_sidebar": 4.5, "color_sidebar_title": 4.5, "color_top_status": 4.5,
+		"color_active_status": 4.5, "color_cmdpalette": 4.5, "color_aggregator": 4.5,
+		"color_code": 4.5, "color_keystrokes": 4.5, "color_edit_cell": 4.5,
+		"color_inactive_status": 3.0, "color_menu_help": 3.0, "color_guide_unwritten": 3.0,
+	}
+	for _, name := range Names() {
+		p := palOf(t, name)
+		for opt, floor := range floors {
+			spec := vdOpts(t, name)[opt]
+			parts := strings.SplitN(spec, " on ", 2)
+			if len(parts) != 2 {
+				continue // foreground-only options are composited elsewhere
+			}
+			fg, bg := vdIndices(parts[0]), vdIndices(parts[1])
+			if len(fg) != 1 || len(bg) != 1 {
+				continue
+			}
+			if r := p.contrast(fg[0], bg[0]); r < floor {
+				t.Errorf("%s: %s = %q has contrast %.2f, want >= %.1f", name, opt, spec, r, floor)
+			}
+		}
+	}
+}
+
+// The git status colors share one narrow column in the picker, so they have to
+// be told apart from each other and not just from the background. Palettes
+// collapse pairs in ways contrast ratios do not catch: github-dark-colorblind
+// moves red to orange, landing it beside its yellow at deltaE 17.
+func TestGitStatusColorsSeparate(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if name == "ayu-dark" {
+			continue // pinned to hand-tuned values; see its palette.toml
+		}
+		cols := map[string]string{
+			"added": p.Picker.GitAdded, "modified": p.Picker.GitModified,
+			"deleted": p.Picker.GitDeleted, "renamed": p.Picker.GitRenamed,
+		}
+		names := []string{"added", "modified", "deleted", "renamed"}
+		for i, a := range names {
+			for _, b := range names[i+1:] {
+				if d := deltaE(cols[a], cols[b]); d < minGitDelta {
+					t.Errorf("%s: git %s (%s) and %s (%s) are only deltaE %.1f apart, want >= %d",
+						name, a, cols[a], b, cols[b], d, minGitDelta)
+				}
+			}
+		}
+	}
+}
+
+// The markup colors only reach the screen on a colorscheme that left the JSX
+// captures unstyled, so they have to be clearly not the plain foreground (or
+// they change nothing) and clearly not each other (or the attribute name reads
+// as part of the element name).
+func TestTagColorsAreDistinct(t *testing.T) {
+	const minTagDelta = 20
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fg := p.Primary.Foreground
+		for label, c := range map[string]string{"tag": p.Tag.Tag, "attribute": p.Tag.Attribute} {
+			if d := deltaE(c, fg); d < minTagDelta {
+				t.Errorf("%s: tag.%s %s is only deltaE %.1f from the foreground %s, so filling it would change nothing",
+					name, label, c, d, fg)
+			}
+		}
+		if d := deltaE(p.Tag.Tag, p.Tag.Attribute); d < minTagDelta {
+			t.Errorf("%s: tag %s and attribute %s are only deltaE %.1f apart",
+				name, p.Tag.Tag, p.Tag.Attribute, d)
+		}
 	}
 }
