@@ -94,3 +94,31 @@ rules = [
   { url = "*/", fg = "#81a1c1" },
   { url = "*", fg = "#d8dee9" }
 ]
+
+# Icon colors.
+#
+# yazi paints the glyph in front of every row from its own [icon] table, which
+# hard-codes hexes -- the generic folder icon is #03a9f4 under every theme, so
+# folders read blue even on a palette whose accent is nothing of the kind.
+# These are yazi's own fallback rules (same glyphs, same order, so the specific
+# cases still win over the generic ones) with the colors taken from the palette.
+# The named entries in its "dirs" table (.git, .config, Downloads, ...) are
+# matched earlier and deliberately left alone: those icons are recognized by
+# their color as much as their shape.
+[icon]
+prepend_conds = [
+  # Special files
+  { if = "orphan", text = "\uf127", fg = "#bf616a" },
+  { if = "link",   text = "\uf481", fg = "#4c566a" },
+  { if = "block",  text = "\uf0c9", fg = "#ebcb8b" },
+  { if = "char",   text = "\uf1c0", fg = "#ebcb8b" },
+  { if = "fifo",   text = "\uf1d1", fg = "#ebcb8b" },
+  { if = "sock",   text = "\uf1e4", fg = "#ebcb8b" },
+  { if = "sticky", text = "\uf08d", fg = "#ebcb8b" },
+  { if = "dummy",  text = "\uf057", fg = "#bf616a" },
+  # Fallback
+  { if = "dir & hovered", text = "\ue5fe", fg = "#81a1c1" },
+  { if = "dir",           text = "\ue5ff", fg = "#81a1c1" },
+  { if = "exec",          text = "\uf489", fg = "#a3be8c" },
+  { if = "!dir",          text = "\uf15b", fg = "#d8dee9" }
+]

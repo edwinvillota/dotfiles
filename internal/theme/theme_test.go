@@ -1,6 +1,7 @@
 package theme
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -715,6 +716,40 @@ func TestZellijUIHasDarkAnchor(t *testing.T) {
 		if c := contrastHex(got["white"], got["black"]); c < minUIPair {
 			t.Errorf("%s: zellij white %s on black %s has contrast %.2f, want >= %.1f",
 				name, got["white"], got["black"], c, minUIPair)
+		}
+	}
+}
+
+// yazi paints the glyph in front of every row from its own [icon] table, whose
+// colors are hard-coded hexes -- the generic folder icon is #03a9f4 under every
+// theme, so folders read blue whatever the palette says. The flavor restates
+// yazi's fallback rules with palette colors; these are the ones that reach the
+// screen for an ordinary directory or file.
+func TestYaziIconsComeFromPalette(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := YaziFlavor(p)
+		if !strings.Contains(out, "prepend_conds = [") {
+			t.Errorf("%s: flavor has no [icon] rules, so yazi paints its own icon colors", name)
+			continue
+		}
+		for _, want := range []struct{ rule, color string }{
+			{`{ if = "dir",           text = "\ue5ff", fg = "%s" }`, p.Roles.Accent2},
+			{`{ if = "dir & hovered", text = "\ue5fe", fg = "%s" }`, p.Roles.Accent2},
+			{`{ if = "exec",          text = "\uf489", fg = "%s" }`, p.Roles.Good},
+			{`{ if = "!dir",          text = "\uf15b", fg = "%s" }`, p.Primary.Foreground},
+		} {
+			if line := fmt.Sprintf(want.rule, want.color); !strings.Contains(out, line) {
+				t.Errorf("%s: flavor is missing %s", name, line)
+			}
+		}
+		for _, stock := range []string{"#03a9f4", "#8bc34a", "#9e9e9e", "#cddc39", "#f44336"} {
+			if strings.Contains(out, `fg = "`+stock+`"`) {
+				t.Errorf("%s: flavor still carries yazi's stock icon color %s", name, stock)
+			}
 		}
 	}
 }

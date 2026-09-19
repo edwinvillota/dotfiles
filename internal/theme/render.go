@@ -287,6 +287,34 @@ rules = [
   { url = "*/", fg = "%s" },
   { url = "*", fg = "%s" }
 ]
+
+# Icon colors.
+#
+# yazi paints the glyph in front of every row from its own [icon] table, which
+# hard-codes hexes -- the generic folder icon is #03a9f4 under every theme, so
+# folders read blue even on a palette whose accent is nothing of the kind.
+# These are yazi's own fallback rules (same glyphs, same order, so the specific
+# cases still win over the generic ones) with the colors taken from the palette.
+# The named entries in its "dirs" table (.git, .config, Downloads, ...) are
+# matched earlier and deliberately left alone: those icons are recognized by
+# their color as much as their shape.
+[icon]
+prepend_conds = [
+  # Special files
+  { if = "orphan", text = "\uf127", fg = "%s" },
+  { if = "link",   text = "\uf481", fg = "%s" },
+  { if = "block",  text = "\uf0c9", fg = "%s" },
+  { if = "char",   text = "\uf1c0", fg = "%s" },
+  { if = "fifo",   text = "\uf1d1", fg = "%s" },
+  { if = "sock",   text = "\uf1e4", fg = "%s" },
+  { if = "sticky", text = "\uf08d", fg = "%s" },
+  { if = "dummy",  text = "\uf057", fg = "%s" },
+  # Fallback
+  { if = "dir & hovered", text = "\ue5fe", fg = "%s" },
+  { if = "dir",           text = "\ue5ff", fg = "%s" },
+  { if = "exec",          text = "\uf489", fg = "%s" },
+  { if = "!dir",          text = "\uf15b", fg = "%s" }
+]
 `,
 		p.Label, p.Source, p.Name,
 		p.Primary.Background,
@@ -311,6 +339,9 @@ rules = [
 		r.Dim,
 		r.Error, r.Good,
 		r.Accent2, p.Primary.Foreground,
+		// [icon] prepend_conds, in the same order as the block above
+		r.Error, r.Dim, r.Warn, r.Warn, r.Warn, r.Warn, r.Warn, r.Error,
+		r.Accent2, r.Accent2, r.Good, p.Primary.Foreground,
 	)
 }
 
