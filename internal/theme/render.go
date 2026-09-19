@@ -30,13 +30,46 @@ func Wezterm(p *Palette) string {
 	return b.String()
 }
 
+// minUIAnchor is the contrast the zellij theme's `black` needs from the
+// foreground. minUIPair is what `white` needs from that black -- the looser of
+// the two on purpose: github-dark's pair sits at 4.22, which reads, and
+// tightening it would repaint a theme that was signed off as it is.
+const (
+	minUIAnchor = 4.5
+	minUIPair   = 4.0
+)
+
+// uiDark is the dark end of the zellij UI. zellij derives its bars from the
+// theme's eight colors rather than from fg/bg -- the status bar is drawn as
+// `black` text on `white` and `white` text on `black` -- so a palette whose
+// ANSI black is not dark has no dark end at all. jellybeans' black is #929292
+// and its white #dedede, which put every segment of the bottom bar between
+// 1.86 and 2.31 contrast: legible nowhere. Substitute a real dark surface,
+// stepped off the background far enough to read as its own strip, exactly as
+// VisiData's panel does. Every other palette here has a dark ANSI black and is
+// untouched.
+func (p *Palette) uiDark() string {
+	blk := p.Normal.Black
+	if contrastHex(blk, p.Primary.Foreground) >= minUIAnchor &&
+		contrastHex(p.Normal.White, blk) >= minUIPair {
+		return blk
+	}
+	for t := 0.06; t <= 0.40; t += 0.02 {
+		x := Mix(p.Primary.Background, p.Primary.Foreground, t)
+		if contrastHex(x, p.Primary.Background) >= 1.35 {
+			return x
+		}
+	}
+	return p.Primary.Background
+}
+
 // ZellijTheme renders themes/<name>.kdl (committed repo asset).
 func ZellijTheme(p *Palette) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// %s (%s) — generated from themes/%s/palette.toml, do not edit by hand\nthemes {\n    %s {\n", p.Label, p.Source, p.Name, p.Name)
 	rows := [][2]string{
 		{"fg", p.Primary.Foreground}, {"bg", p.Primary.Background},
-		{"black", p.Normal.Black}, {"red", p.Normal.Red}, {"green", p.Normal.Green},
+		{"black", p.uiDark()}, {"red", p.Normal.Red}, {"green", p.Normal.Green},
 		{"yellow", p.Normal.Yellow}, {"blue", p.Normal.Blue}, {"magenta", p.Normal.Magenta},
 		{"cyan", p.Normal.Cyan}, {"white", p.Normal.White}, {"orange", p.Roles.Warn},
 	}

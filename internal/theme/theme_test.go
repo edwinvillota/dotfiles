@@ -668,3 +668,53 @@ func TestPickerLadderDescends(t *testing.T) {
 		}
 	}
 }
+
+// De-emphasized text has to read as de-emphasized. `dim` defaults to the
+// palette's bright black, which is a mid grey on most themes but #bdbdbd on
+// jellybeans and #a6a69c on kanagawa-dragon -- close enough to the foreground
+// that an inactive zellij tab was as loud as the active one (9.97 against
+// 13.92, where every other palette sits near a third of the foreground).
+func TestDimReadsDimmer(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fgc := contrastHex(p.Primary.Foreground, p.Primary.Background)
+		dimc := contrastHex(p.Roles.Dim, p.Primary.Background)
+		if dimc > maxDimShare*fgc {
+			t.Errorf("%s: dim %s carries %.2f of the %.2f the foreground does (%.0f%%), want at most %.0f%%",
+				name, p.Roles.Dim, dimc, fgc, 100*dimc/fgc, 100*maxDimShare)
+		}
+	}
+}
+
+// zellij draws its bars from the theme's eight colors, not from fg/bg: the
+// status bar is `black` text on `white` and `white` text on `black`. A palette
+// whose ANSI black is not dark therefore has no dark end -- jellybeans' black
+// #929292 against its white #dedede put every segment of the bottom bar
+// between 1.86 and 2.31 contrast, measured in a real zellij session.
+func TestZellijUIHasDarkAnchor(t *testing.T) {
+	re := regexp.MustCompile(`(?m)^\s+(fg|black|white)\s+"(#[0-9a-fA-F]{6})"`)
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]string{}
+		for _, m := range re.FindAllStringSubmatch(ZellijTheme(p), -1) {
+			got[m[1]] = m[2]
+		}
+		if len(got) != 3 {
+			t.Fatalf("%s: zellij theme is missing fg/black/white: %v", name, got)
+		}
+		if c := contrastHex(got["black"], got["fg"]); c < minUIAnchor {
+			t.Errorf("%s: zellij black %s has contrast %.2f against fg %s, want >= %.1f",
+				name, got["black"], c, got["fg"], minUIAnchor)
+		}
+		if c := contrastHex(got["white"], got["black"]); c < minUIPair {
+			t.Errorf("%s: zellij white %s on black %s has contrast %.2f, want >= %.1f",
+				name, got["white"], got["black"], c, minUIPair)
+		}
+	}
+}

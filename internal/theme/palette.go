@@ -131,6 +131,15 @@ func Names() []string {
 	return out
 }
 
+// maxDimShare is the most of the foreground's contrast that de-emphasized text
+// may carry before it stops reading as de-emphasized. targetDimShare is what a
+// re-derived dim aims for -- the middle of what the palettes here already do.
+const (
+	maxDimShare    = 0.45
+	targetDimShare = 0.33
+	minDimOnBody   = 3.0
+)
+
 func (p *Palette) deriveRoles() {
 	def := func(dst *string, v string) {
 		if *dst == "" {
@@ -142,10 +151,45 @@ func (p *Palette) deriveRoles() {
 	def(&p.Roles.Good, p.Bright.Green)
 	def(&p.Roles.Warn, p.Normal.Yellow)
 	def(&p.Roles.Error, p.Normal.Red)
+	pinnedDim := p.Roles.Dim != ""
 	def(&p.Roles.Dim, p.Bright.Black)
+	if !pinnedDim {
+		p.Roles.Dim = p.dimmed(p.Roles.Dim)
+	}
 	def(&p.Roles.Panel, Mix(p.Primary.Background, p.Primary.Foreground, 0.06))
 	def(&p.Roles.Line, Mix(p.Primary.Background, p.Primary.Foreground, 0.12))
 	def(&p.Roles.Sel, p.Selection.Background)
+}
+
+// dimmed keeps `dim` actually de-emphasized. It defaults to the palette's
+// bright black, which on most themes is a mid grey -- but jellybeans' is
+// #bdbdbd and kanagawa-dragon's #a6a69c, near enough to the foreground that
+// an inactive zellij tab read as loud as the active one (9.97 against 13.92 on
+// jellybeans, where every other theme sits around a third of the foreground's
+// contrast). When that happens, re-derive it as a mix off the background at
+// the share the rest of the palettes already use.
+func (p *Palette) dimmed(dim string) string {
+	bg, fg := p.Primary.Background, p.Primary.Foreground
+	fgc := contrastHex(fg, bg)
+	if contrastHex(dim, bg) <= maxDimShare*fgc {
+		return dim
+	}
+	want := targetDimShare * fgc
+	if want < minDimOnBody {
+		want = minDimOnBody
+	}
+	best, bestErr := dim, math.Inf(1)
+	for t := 0.10; t <= 0.95; t += 0.01 {
+		x := Mix(bg, fg, t)
+		c := contrastHex(x, bg)
+		if c < minDimOnBody {
+			continue
+		}
+		if e := math.Abs(c - want); e < bestErr {
+			best, bestErr = x, e
+		}
+	}
+	return best
 }
 
 // derivePicker fills every unset [picker] key from the palette. Hidden and

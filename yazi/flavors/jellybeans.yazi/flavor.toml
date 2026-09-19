@@ -30,7 +30,7 @@ border_style  = { fg = "#2a2a2a" }
 [status]
 overall = { bg = "#121212" }
 
-perm_sep   = { fg = "#bdbdbd" }
+perm_sep   = { fg = "#7e7e7e" }
 perm_type  = { fg = "#bddeab" }
 perm_read  = { fg = "#ffdca0" }
 perm_write = { fg = "#e27373" }
@@ -50,7 +50,7 @@ inactive = {}
 [which]
 mask            = { bg = "#1e1e1e" }
 cand            = { fg = "#1ab2a8" }
-rest            = { fg = "#bdbdbd" }
+rest            = { fg = "#7e7e7e" }
 desc            = { fg = "#fbdaff" }
 separator       = "  "
 separator_style = { fg = "#2a2a2a" }
@@ -86,7 +86,7 @@ rules = [
   { url = "*.{js,ts,tsx,jsx,lua,py,go,rs,rb,sh,zsh}", fg = "#bddeab" },
   { url = "*.{json,yaml,yml,toml,kdl,ini,conf}", fg = "#1ab2a8" },
   # Virtual file system
-  { mime = "vfs/{absent,stale}", fg = "#bdbdbd" },
+  { mime = "vfs/{absent,stale}", fg = "#7e7e7e" },
   # Special
   { url = "*", is = "orphan", fg = "#e27373" },
   { url = "*", is = "exec", fg = "#bddeab" },
