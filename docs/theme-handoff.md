@@ -140,6 +140,14 @@ github-dark, so it needs a decision first. Measure it with the zellij frame in
   attribute at deltaE 62.5, the widest of the nine, and its plain-foreground
   share (27.3%) is ordinary identifiers, in line with nord. `oahlen/iceberg.nvim`
   is small and stale; `cocopon/iceberg.vim` plus the fill-in is the better deal.
+- **yazi's icon colors.** yazi paints the glyph in front of every row from its
+  own [icon] table, which hard-codes hexes -- the generic folder icon is
+  #03a9f4 under every theme. The flavor now restates its fallback icon rules
+  with palette colors (`TestYaziIconsComeFromPalette`). Directory *names* were
+  already palette-driven: they take accent2, which every palette derives from
+  its bright blue, so folders stay blue under all nine themes by design, the
+  same convention as yazi's own default and LS_COLORS. A palette-level
+  `folder` role would be the change if that should vary per theme.
 - **jellybeans' zellij bars.** Its ANSI black (#929292) and bright black
   (#bdbdbd) are light, so zellij's bars had no dark end (1.86-2.31 contrast)
   and inactive tabs were as loud as the active one. `Palette.uiDark` and
@@ -154,6 +162,15 @@ if you continue this work. Two renderers:
 - **nvim** (`nvimshot.py`): attaches a UI to a headless `nvim --embed` over
   msgpack-rpc, drives real keystrokes and ex commands, and renders the exact
   per-cell RGB to PNG from nvim's own `hl_attr_define` attributes.
+- **yazi cannot be captured in the pty harness at all**: yazi 26 silently falls
+  back to its built-in theme there, official flavors included, so every colour
+  it paints is a default and looks identical under every palette. Drive the
+  real terminal instead: `wezterm cli spawn --new-window -- yazi <path>`, poll
+  `wezterm cli get-text --pane-id <id> --escapes` until the listing appears,
+  then `wezterm cli kill-pane`. Note it emits truecolor with *colon*
+  subparameters (`38:2::r:g:b`), which a `38;2;` regex misses, and always
+  confirm which flavor is live before reading colors off a capture -- two of
+  mine showed another theme's palette because the probe raced the config.
 - **any TUI** (`ptyshot.py`): the same pty renderer as `vdshot.py`, but it
   takes a command, so it also captures zellij (run it against a sandbox `HOME`
   with the repo config; on macOS zellij's plugin permissions live in
