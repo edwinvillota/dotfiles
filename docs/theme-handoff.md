@@ -119,6 +119,15 @@ file are both painted `SnacksPickerFile` (`.gitignore` and `README.md` both
 get `hidden` and `ignored`. Not reachable from the palette; it needs an
 upstream change or a custom matcher.
 
+### 3. zellij paints the keybinding letter in `red` on its light ribbon
+
+The bottom bar's `<n>` / `<f>` characters are drawn in the theme's `red` on the
+`white` ribbon: 2.25 on jellybeans and 1.62 on ayu-dark, so this is
+cross-theme, not a jellybeans defect. Fixing it means darkening `red` in the
+zellij theme when it does not clear the ribbon, which repaints ayu-dark and
+github-dark, so it needs a decision first. Measure it with the zellij frame in
+`ptyshot.py` — the numbers above come from real sessions.
+
 ### Closed this pass
 
 - **nord's colorscheme plugin stays `shaunsingh/nord.nvim`.** `gbprod/nord.nvim`
@@ -131,6 +140,10 @@ upstream change or a custom matcher.
   attribute at deltaE 62.5, the widest of the nine, and its plain-foreground
   share (27.3%) is ordinary identifiers, in line with nord. `oahlen/iceberg.nvim`
   is small and stale; `cocopon/iceberg.vim` plus the fill-in is the better deal.
+- **jellybeans' zellij bars.** Its ANSI black (#929292) and bright black
+  (#bdbdbd) are light, so zellij's bars had no dark end (1.86-2.31 contrast)
+  and inactive tabs were as loud as the active one. `Palette.uiDark` and
+  `Palette.dimmed` fix both; see `TestZellijUIHasDarkAnchor`, `TestDimReadsDimmer`.
 
 ## The screenshot harness
 
@@ -141,6 +154,11 @@ if you continue this work. Two renderers:
 - **nvim** (`nvimshot.py`): attaches a UI to a headless `nvim --embed` over
   msgpack-rpc, drives real keystrokes and ex commands, and renders the exact
   per-cell RGB to PNG from nvim's own `hl_attr_define` attributes.
+- **any TUI** (`ptyshot.py`): the same pty renderer as `vdshot.py`, but it
+  takes a command, so it also captures zellij (run it against a sandbox `HOME`
+  with the repo config; on macOS zellij's plugin permissions live in
+  `~/Library/Caches/org.Zellij-Contributors.Zellij/permissions.kdl`, not under
+  `XDG_CACHE_HOME`, and zjstatus will block on a permission prompt without it).
 - **VisiData** (`vdshot.py`): runs `vd` in a real pty, parses output with
   `pyte`, and paints each cell with what the terminal would show — indices 0-15
   from the palette's ANSI slots, 16-255 from the fixed cube. This is what makes
