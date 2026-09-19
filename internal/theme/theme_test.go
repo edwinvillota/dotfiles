@@ -644,3 +644,27 @@ func TestTagColorsAreDistinct(t *testing.T) {
 		}
 	}
 }
+
+// A picker row's loudness has to match how much it matters: a source file
+// first, a dotfile behind it, a node_modules hit quietest. The derived ladder
+// is monotonic by construction (file = fg, hidden = 55% of the way there,
+// ignored = 28%), but a palette that pins these by hand can invert it --
+// ayu-dark's hidden paths used to outshine its file names, 11.2 against 9.4.
+func TestPickerLadderDescends(t *testing.T) {
+	for _, name := range Names() {
+		p, err := Load(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		bg := p.Primary.Background
+		file, hidden, ignored := contrastHex(p.Picker.File, bg), contrastHex(p.Picker.Hidden, bg), contrastHex(p.Picker.Ignored, bg)
+		if hidden > file {
+			t.Errorf("%s: hidden paths (%s, %.2f) are louder than file names (%s, %.2f)",
+				name, p.Picker.Hidden, hidden, p.Picker.File, file)
+		}
+		if ignored > hidden {
+			t.Errorf("%s: ignored paths (%s, %.2f) are louder than hidden ones (%s, %.2f)",
+				name, p.Picker.Ignored, ignored, p.Picker.Hidden, hidden)
+		}
+	}
+}

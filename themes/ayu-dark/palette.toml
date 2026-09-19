@@ -52,7 +52,11 @@ sel = "#131721"
 [picker]
 file = "#a3b7cc"
 folder = "#a3ccc7"
-hidden = "#a3c7ff"
+# stepped 25% toward the panel from the original #a3c7ff: hidden paths were
+# brighter than normal file names (11.2 vs 9.4 against the picker background),
+# which ran the ladder backwards -- every derived theme goes file > hidden >
+# ignored. Same hue, contrast 6.56, between file 9.4 and ignored 3.2.
+hidden = "#7d99c5"
 ignored = "#5c6370"
 match = "#cc7e7e"
 selection = "#b7c7a3"

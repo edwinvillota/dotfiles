@@ -5,7 +5,7 @@
 # unset (the upstream default) makes previews bleed through dialogs.
 
 [app]
-overall = { bg = "#010409" }
+overall = { bg = "#0d1117" }
 
 [mgr]
 cwd = { fg = "#79c0ff" }
@@ -20,15 +20,15 @@ marker_cut      = { fg = "#ff7b72", bg = "#ff7b72" }
 marker_marked   = { fg = "#79c0ff", bg = "#79c0ff" }
 marker_selected = { fg = "#e3b341", bg = "#e3b341" }
 
-count_copied   = { fg = "#010409", bg = "#56d364" }
-count_cut      = { fg = "#010409", bg = "#ff7b72" }
-count_selected = { fg = "#010409", bg = "#e3b341" }
+count_copied   = { fg = "#0d1117", bg = "#56d364" }
+count_cut      = { fg = "#0d1117", bg = "#ff7b72" }
+count_selected = { fg = "#0d1117", bg = "#e3b341" }
 
 border_symbol = "│"
-border_style  = { fg = "#1c2025" }
+border_style  = { fg = "#272b31" }
 
 [status]
-overall = { bg = "#010409" }
+overall = { bg = "#0d1117" }
 
 perm_sep   = { fg = "#6e7681" }
 perm_type  = { fg = "#56d364" }
@@ -48,12 +48,12 @@ active   = { fg = "#e3b341", bold = true }
 inactive = {}
 
 [which]
-mask            = { bg = "#0f1217" }
+mask            = { bg = "#1a1e24" }
 cand            = { fg = "#56d4dd" }
 rest            = { fg = "#6e7681" }
 desc            = { fg = "#d2a8ff" }
 separator       = "  "
-separator_style = { fg = "#1c2025" }
+separator_style = { fg = "#272b31" }
 
 [tasks]
 border  = { fg = "#79c0ff" }
@@ -66,10 +66,10 @@ title_warn  = { fg = "#d29922" }
 title_error = { fg = "#ff7b72" }
 
 [confirm]
-border  = { fg = "#79c0ff", bg = "#010409" }
-title   = { fg = "#79c0ff", bg = "#010409" }
-body    = { bg = "#010409" }
-list    = { fg = "#56d4dd", bg = "#010409" }
+border  = { fg = "#79c0ff", bg = "#0d1117" }
+title   = { fg = "#79c0ff", bg = "#0d1117" }
+body    = { bg = "#0d1117" }
+list    = { fg = "#56d4dd", bg = "#0d1117" }
 
 [filetype]
 rules = [

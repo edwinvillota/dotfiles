@@ -8,7 +8,10 @@ source = "https://terminalcolors.com/themes/github/dark/"
 nvim = "github_dark_default"
 [primary]
 foreground = "#e6edf3"
-background = "#010409"
+# the colorscheme paints #0d1117; the terminalcolors.com export gives #010409,
+# which left a visible seam between the editor and the zellij bars. Seven of
+# the nine palettes match their colorscheme exactly, so this follows suit.
+background = "#0d1117"
 
 [cursor]
 text = "#010409"
