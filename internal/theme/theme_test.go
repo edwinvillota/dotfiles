@@ -59,7 +59,7 @@ func TestMix(t *testing.T) {
 func TestRenderersContainPaletteColors(t *testing.T) {
 	p, _ := Load("nord")
 	for name, out := range map[string]string{
-		"wezterm": Wezterm(p), "zellij": ZellijTheme(p), "zjstatus": ZjstatusLayout(p),
+		"wezterm": Wezterm(p), "kitty": Kitty(p), "zellij": ZellijTheme(p), "zjstatus": ZjstatusLayout(p),
 		"zsh": ZshEnv(p), "yazi": YaziFlavor(p), "btop": BtopTheme(p), "ghdash": GhDashThemeBlock(p), "visidata": VisiData(p),
 	} {
 		// visidata speaks xterm-256 indices, never hex (see VisiData)

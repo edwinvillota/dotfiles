@@ -46,6 +46,12 @@ dest = "~/.config/wezterm"
 # theme.lua is machine state written by `dotfiles theme`
 ignore = ["theme.lua"]
 
+[unit.kitty]
+src = "kitty"
+dest = "~/.config/kitty"
+# theme.conf is machine state written by `dotfiles theme`
+ignore = ["theme.conf"]
+
 [unit.omz-custom]
 src = "oh-my-zsh/custom"
 dest = "~/.oh-my-zsh/custom"
@@ -160,7 +166,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm",
+core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm", "kitty",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -220,6 +226,13 @@ pacman = "wezterm"
 apt = { skip = true, note = "no repo package; installed from the official .deb below" }
 # official release .debs
 deb = { amd64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.deb", arm64 = "https://github.com/wezterm/wezterm/releases/download/20240203-110809-5046fc22/wezterm-20240203-110809-5046fc22.Ubuntu22.04.arm64.deb" }
+os = ["darwin", "linux"]
+
+[deps.pkg.kitty]
+bin = { darwin = "/Applications/kitty.app/Contents/MacOS/kitty", linux = "kitty" }
+brew = { cask = "kitty" }
+pacman = "kitty"
+apt = "kitty"
 os = ["darwin", "linux"]
 
 # --- adding another terminal later (e.g. ghostty) is two blocks: -----------
