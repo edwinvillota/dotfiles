@@ -176,7 +176,7 @@ func Apply(m *manifest.Manifest, name string, led *ledger.Ledger, log io.Writer)
 	}
 	res.Reload = []string{
 		"wezterm: reloads live (watches its config)",
-		"kitty: `kill -SIGUSR1 $KITTY_PID` in a kitty window, or ctrl+cmd+, ",
+		"kitty: reloads live (auto_reload_config, on by default); older builds need SIGUSR1",
 		"zellij: restart the session to pick up theme + status bar",
 		"nvim: running instances keep the old colors; new ones use " + p.Label,
 		"shell (fzf/bat): open a new shell or `source ~/.config/zsh/00-theme.zsh`",

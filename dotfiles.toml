@@ -166,7 +166,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm", "kitty",
+core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm", "kitty", "iosevka-term-nerd-font",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -233,6 +233,16 @@ bin = { darwin = "/Applications/kitty.app/Contents/MacOS/kitty", linux = "kitty"
 brew = { cask = "kitty" }
 pacman = "kitty"
 apt = "kitty"
+os = ["darwin", "linux"]
+
+# kitty only accepts monospaced faces, and the plain "IosevkaTerm NF" build is
+# not one (Nerd Font icons are double-width), so the Mono variant has to be
+# present or kitty silently falls back to Menlo. wezterm accepts either.
+[deps.pkg.iosevka-term-nerd-font]
+bin = { darwin = "/opt/homebrew/Caskroom/font-iosevka-term-nerd-font", linux = "/usr/share/fonts/TTF/IosevkaTermNerdFontMono-Regular.ttf" }
+brew = { cask = "font-iosevka-term-nerd-font" }
+pacman = "ttf-iosevkaterm-nerd"
+apt = { skip = true, note = "no repo package; install the Nerd Font release manually" }
 os = ["darwin", "linux"]
 
 # --- adding another terminal later (e.g. ghostty) is two blocks: -----------
