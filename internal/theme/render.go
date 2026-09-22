@@ -153,6 +153,10 @@ const zjstatusTemplate = `layout {
                 border_position "top"
 
                 hide_frame_for_single_pane "true"
+                // zjstatus >= 0.25 follows zellij 0.45's new frame styles and
+                // defaults to "titles"; "full" is the frame this layout was
+                // built against. It has to match pane_frame_style in config.kdl.
+                pane_frame_style "full"
                 mode_normal  "#[bg={{sel}}] "
                 mode_tmux    "#[bg={{error}}] "
 

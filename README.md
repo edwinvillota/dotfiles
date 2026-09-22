@@ -127,21 +127,24 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 
 ## Known issues
 
-- **Endless screen blinking in zellij after opening a pane** (`Ctrl+g p n`),
-  persisting even after the pane is closed: triggered by upgrading zellij to
-  0.45.x — the current zjstatus (v0.24.0) fights zellij 0.45 over resizes on
-  every pane-count change (see
-  [dj95/zjstatus#174](https://github.com/dj95/zjstatus/issues/174)), while the
-  older April 2025 zjstatus errors outright on 0.45. It is not a wezterm
-  problem (upgrading wezterm only changes the flicker speed). Known-good
-  combo: **zellij 0.42.2 + zjstatus April 2025 build** (what the repo
-  carries). Note the repo syncs `zellij/plugins/zjstatus.wasm` to the live
-  config, so fix the plugin in the repo, not just live. After changing binary
-  or plugin: clear the plugin cache
+- **Image previews in yazi need zellij >= 0.45 under kitty.** zellij 0.42.x
+  advertises sixel to applications unconditionally; kitty implements no sixel
+  at all, so yazi picks the sixel adapter and the escape stream lands on
+  screen as pages of text. zellij 0.45 implements the kitty graphics protocol
+  and only advertises sixel when the host terminal really supports it, which
+  fixes it. wezterm renders sixel, which is why this never showed there.
+  The manifest now pins `min = "0.45"`. Note a manually installed
+  `~/.cargo/bin/zellij` shadows Homebrew's — check `zellij --version` matches
+  what you expect, since `kitty/zellij-launch` searches cargo first.
+- **zjstatus must be >= 0.25 on zellij >= 0.45** (they are paired: 0.25.0's
+  notes say "zellij >= 0.45.0 required", and it fixes the flickering pane
+  frames that older combinations produced). zellij 0.45 also added frame
+  styles and defaults to `titles`; `pane_frame_style "full"` is set in both
+  `zellij/config.kdl` and the zjstatus block so the frames stay as they were.
+  After changing binary or plugin: clear the plugin cache
   (`~/Library/Caches/org.Zellij-Contributors.Zellij` on macOS,
   `~/.cache/zellij` on Linux) and kill all zellij servers
-  (`pkill -f "zellij --server"`). Also check *which* zellij runs — wezterm
-  prefers `~/.cargo/bin/zellij` over Homebrew's.
+  (`pkill -f "zellij --server"`).
 
 ## TUI keys
 

@@ -275,6 +275,11 @@ apt = { skip = true }
 
 [deps.pkg.zellij]
 apt = { skip = true }
+# 0.45 is the floor: it implements the kitty graphics protocol and stops
+# advertising sixel to applications when the host terminal cannot render it.
+# Below that, yazi picks sixel inside zellij and kitty -- which has no sixel
+# at all -- prints the escape stream as text. zjstatus >= 0.25 requires it too.
+min = "0.45"
 
 [deps.pkg.zoxide]
 
