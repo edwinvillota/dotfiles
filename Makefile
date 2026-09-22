@@ -2,7 +2,7 @@ BIN     := bin/dotfiles
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build test unit release clean linux try try-gui install-bin
+.PHONY: build test unit release clean linux try try-gui capture install-bin
 
 build:
 	go build -ldflags '$(LDFLAGS)' -o $(BIN) ./cmd/dotfiles
@@ -37,6 +37,15 @@ try: linux
 try-gui: linux
 	docker build --build-arg TARGETARCH=$(DOCKER_ARCH) -f test/docker/Dockerfile.gui -t dotfiles-try-gui .
 	docker run --rm -it -p 6080:6080 dotfiles-try-gui
+
+# Same image, driven headlessly: saves PNGs of kitty/zellij/yazi on the
+# virtual display into ./capture, so terminal changes can be reviewed without
+# sitting in front of the VNC session. CAPTURE_OUT overrides the directory.
+CAPTURE_OUT ?= $(CURDIR)/capture
+capture: linux
+	docker build --build-arg TARGETARCH=$(DOCKER_ARCH) -f test/docker/Dockerfile.gui -t dotfiles-try-gui .
+	@mkdir -p $(CAPTURE_OUT)
+	docker run --rm -v $(CAPTURE_OUT):/out --entrypoint /bin/bash dotfiles-try-gui test/docker/capture.sh
 
 # Install the binary for this machine into ~/.local/bin.
 install-bin: build
