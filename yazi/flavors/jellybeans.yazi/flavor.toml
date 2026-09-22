@@ -30,7 +30,7 @@ border_style  = { fg = "#2a2a2a" }
 [status]
 overall = { bg = "#121212" }
 
-perm_sep   = { fg = "#bdbdbd" }
+perm_sep   = { fg = "#7e7e7e" }
 perm_type  = { fg = "#bddeab" }
 perm_read  = { fg = "#ffdca0" }
 perm_write = { fg = "#e27373" }
@@ -50,7 +50,7 @@ inactive = {}
 [which]
 mask            = { bg = "#1e1e1e" }
 cand            = { fg = "#1ab2a8" }
-rest            = { fg = "#bdbdbd" }
+rest            = { fg = "#7e7e7e" }
 desc            = { fg = "#fbdaff" }
 separator       = "  "
 separator_style = { fg = "#2a2a2a" }
@@ -86,11 +86,39 @@ rules = [
   { url = "*.{js,ts,tsx,jsx,lua,py,go,rs,rb,sh,zsh}", fg = "#bddeab" },
   { url = "*.{json,yaml,yml,toml,kdl,ini,conf}", fg = "#1ab2a8" },
   # Virtual file system
-  { mime = "vfs/{absent,stale}", fg = "#bdbdbd" },
+  { mime = "vfs/{absent,stale}", fg = "#7e7e7e" },
   # Special
   { url = "*", is = "orphan", fg = "#e27373" },
   { url = "*", is = "exec", fg = "#bddeab" },
   # Fallback
   { url = "*/", fg = "#b1d8f6" },
   { url = "*", fg = "#dedede" }
+]
+
+# Icon colors.
+#
+# yazi paints the glyph in front of every row from its own [icon] table, which
+# hard-codes hexes -- the generic folder icon is #03a9f4 under every theme, so
+# folders read blue even on a palette whose accent is nothing of the kind.
+# These are yazi's own fallback rules (same glyphs, same order, so the specific
+# cases still win over the generic ones) with the colors taken from the palette.
+# The named entries in its "dirs" table (.git, .config, Downloads, ...) are
+# matched earlier and deliberately left alone: those icons are recognized by
+# their color as much as their shape.
+[icon]
+prepend_conds = [
+  # Special files
+  { if = "orphan", text = "\uf127", fg = "#e27373" },
+  { if = "link",   text = "\uf481", fg = "#7e7e7e" },
+  { if = "block",  text = "\uf0c9", fg = "#ffba7b" },
+  { if = "char",   text = "\uf1c0", fg = "#ffba7b" },
+  { if = "fifo",   text = "\uf1d1", fg = "#ffba7b" },
+  { if = "sock",   text = "\uf1e4", fg = "#ffba7b" },
+  { if = "sticky", text = "\uf08d", fg = "#ffba7b" },
+  { if = "dummy",  text = "\uf057", fg = "#e27373" },
+  # Fallback
+  { if = "dir & hovered", text = "\ue5fe", fg = "#b1d8f6" },
+  { if = "dir",           text = "\ue5ff", fg = "#b1d8f6" },
+  { if = "exec",          text = "\uf489", fg = "#bddeab" },
+  { if = "!dir",          text = "\uf15b", fg = "#dedede" }
 ]

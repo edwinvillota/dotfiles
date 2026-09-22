@@ -24,8 +24,43 @@ func Wezterm(p *Palette) string {
 	}
 	ansi("ansi", &p.Normal)
 	ansi("brights", &p.Bright)
-	b.WriteString("\t},\n}\n")
+	b.WriteString("\t},\n")
+	fmt.Fprintf(&b, "\ttag = {\n\t\ttag = %q,\n\t\tattribute = %q,\n\t},\n", p.Tag.Tag, p.Tag.Attribute)
+	b.WriteString("}\n")
 	return b.String()
+}
+
+// minUIAnchor is the contrast the zellij theme's `black` needs from the
+// foreground. minUIPair is what `white` needs from that black -- the looser of
+// the two on purpose: github-dark's pair sits at 4.22, which reads, and
+// tightening it would repaint a theme that was signed off as it is.
+const (
+	minUIAnchor = 4.5
+	minUIPair   = 4.0
+)
+
+// uiDark is the dark end of the zellij UI. zellij derives its bars from the
+// theme's eight colors rather than from fg/bg -- the status bar is drawn as
+// `black` text on `white` and `white` text on `black` -- so a palette whose
+// ANSI black is not dark has no dark end at all. jellybeans' black is #929292
+// and its white #dedede, which put every segment of the bottom bar between
+// 1.86 and 2.31 contrast: legible nowhere. Substitute a real dark surface,
+// stepped off the background far enough to read as its own strip, exactly as
+// VisiData's panel does. Every other palette here has a dark ANSI black and is
+// untouched.
+func (p *Palette) uiDark() string {
+	blk := p.Normal.Black
+	if contrastHex(blk, p.Primary.Foreground) >= minUIAnchor &&
+		contrastHex(p.Normal.White, blk) >= minUIPair {
+		return blk
+	}
+	for t := 0.06; t <= 0.40; t += 0.02 {
+		x := Mix(p.Primary.Background, p.Primary.Foreground, t)
+		if contrastHex(x, p.Primary.Background) >= 1.35 {
+			return x
+		}
+	}
+	return p.Primary.Background
 }
 
 // ZellijTheme renders themes/<name>.kdl (committed repo asset).
@@ -34,7 +69,7 @@ func ZellijTheme(p *Palette) string {
 	fmt.Fprintf(&b, "// %s (%s) — generated from themes/%s/palette.toml, do not edit by hand\nthemes {\n    %s {\n", p.Label, p.Source, p.Name, p.Name)
 	rows := [][2]string{
 		{"fg", p.Primary.Foreground}, {"bg", p.Primary.Background},
-		{"black", p.Normal.Black}, {"red", p.Normal.Red}, {"green", p.Normal.Green},
+		{"black", p.uiDark()}, {"red", p.Normal.Red}, {"green", p.Normal.Green},
 		{"yellow", p.Normal.Yellow}, {"blue", p.Normal.Blue}, {"magenta", p.Normal.Magenta},
 		{"cyan", p.Normal.Cyan}, {"white", p.Normal.White}, {"orange", p.Roles.Warn},
 	}
@@ -112,9 +147,28 @@ const zjstatusTemplate = `layout {
 `
 
 // NvimActive renders ~/.config/nvim/lua/config/theme-active.lua, read by
-// nvim/lua/plugins/colorscheme.lua (falls back to ayu-dark when absent).
+// nvim/lua/plugins/colorscheme.lua (falls back to ayu-dark when absent) and
+// by nvim/lua/config/highlights.lua, which paints the Snacks picker groups
+// the colorscheme itself does not define.
 func NvimActive(p *Palette) string {
-	return fmt.Sprintf("-- %s\nreturn { colorscheme = %q }\n", genHeader, p.Nvim)
+	k := p.Picker
+	rows := [][2]string{
+		{"file", k.File}, {"folder", k.Folder},
+		{"hidden", k.Hidden}, {"ignored", k.Ignored},
+		{"match", k.Match}, {"selection", k.Selection}, {"prompt", k.Prompt},
+		{"git_added", k.GitAdded}, {"git_modified", k.GitModified},
+		{"git_deleted", k.GitDeleted}, {"git_renamed", k.GitRenamed},
+		{"git_untracked", k.GitUntracked},
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "-- %s\nreturn {\n\tcolorscheme = %q,\n\tpicker = {\n", genHeader, p.Nvim)
+	for _, r := range rows {
+		fmt.Fprintf(&b, "\t\t%s = %q,\n", r[0], r[1])
+	}
+	b.WriteString("\t},\n")
+	fmt.Fprintf(&b, "\ttag = {\n\t\ttag = %q,\n\t\tattribute = %q,\n\t},\n", p.Tag.Tag, p.Tag.Attribute)
+	b.WriteString("}\n")
+	return b.String()
 }
 
 // ZshEnv renders ~/.config/zsh/00-theme.zsh (sourced first by the modular
@@ -233,6 +287,34 @@ rules = [
   { url = "*/", fg = "%s" },
   { url = "*", fg = "%s" }
 ]
+
+# Icon colors.
+#
+# yazi paints the glyph in front of every row from its own [icon] table, which
+# hard-codes hexes -- the generic folder icon is #03a9f4 under every theme, so
+# folders read blue even on a palette whose accent is nothing of the kind.
+# These are yazi's own fallback rules (same glyphs, same order, so the specific
+# cases still win over the generic ones) with the colors taken from the palette.
+# The named entries in its "dirs" table (.git, .config, Downloads, ...) are
+# matched earlier and deliberately left alone: those icons are recognized by
+# their color as much as their shape.
+[icon]
+prepend_conds = [
+  # Special files
+  { if = "orphan", text = "\uf127", fg = "%s" },
+  { if = "link",   text = "\uf481", fg = "%s" },
+  { if = "block",  text = "\uf0c9", fg = "%s" },
+  { if = "char",   text = "\uf1c0", fg = "%s" },
+  { if = "fifo",   text = "\uf1d1", fg = "%s" },
+  { if = "sock",   text = "\uf1e4", fg = "%s" },
+  { if = "sticky", text = "\uf08d", fg = "%s" },
+  { if = "dummy",  text = "\uf057", fg = "%s" },
+  # Fallback
+  { if = "dir & hovered", text = "\ue5fe", fg = "%s" },
+  { if = "dir",           text = "\ue5ff", fg = "%s" },
+  { if = "exec",          text = "\uf489", fg = "%s" },
+  { if = "!dir",          text = "\uf15b", fg = "%s" }
+]
 `,
 		p.Label, p.Source, p.Name,
 		p.Primary.Background,
@@ -257,6 +339,9 @@ rules = [
 		r.Dim,
 		r.Error, r.Good,
 		r.Accent2, p.Primary.Foreground,
+		// [icon] prepend_conds, in the same order as the block above
+		r.Error, r.Dim, r.Warn, r.Warn, r.Warn, r.Warn, r.Warn, r.Error,
+		r.Accent2, r.Accent2, r.Good, p.Primary.Foreground,
 	)
 }
 
@@ -324,11 +409,23 @@ func GhDashThemeBlock(p *Palette) string {
 // VisiData colors are xterm-256 indices or the 8 ANSI names, never hex, and
 // its stock theme leans on `black`/`white` — which the terminal remaps to the
 // active palette, so a theme whose ANSI black is a mid grey paints the whole
-// sheet grey. Every color here is therefore a fixed cube index derived from
-// the palette (see Xterm256), independent of the ANSI remapping.
+// sheet grey. Naming a slot *blindly*, the way the stock theme does, is the
+// trap; naming one because the palette that defines the remapping puts our
+// exact color there is the opposite. Palette.Paint does the latter: a slot
+// when the hex matches one of the 16 ANSI colors exactly, the fixed cube
+// otherwise.
+//
+// This matters most for the accent, the dominant colored element here. The
+// cube has no cell within deltaE 5 of most palette accents, so seven of nine
+// themes used to paint theirs as one of two near-identical golds (indices 179
+// and 180, error up to 16.2); eight of nine now reach the screen exactly.
+// Across every role the renderer consumes, 58 of 63 theme/role pairs are
+// slot-exact. The dependency this adds -- correct only in a terminal carrying
+// this palette -- is the one the sheet background already has, since
+// color_default is left unset so it inherits the terminal's own background.
 func VisiData(p *Palette) string {
 	r := p.Roles
-	c := Xterm256
+	c := p.Paint
 	fg, bg := c(p.Primary.Foreground), c(p.Primary.Background)
 	// Panels -- menu bar, status bars, sidebar, and the popup boxes drawn with
 	// disp_boxchars -- sit 6% off the background, which quantizes to at most a
@@ -337,16 +434,16 @@ func VisiData(p *Palette) string {
 	// enough to read as a distinct surface while staying quiet.
 	const minPanelVsBody = 1.35
 	panelHex := r.Panel
-	if contrastIdx(bg, c(panelHex)) < minPanelVsBody {
+	if p.contrast(bg, c(panelHex)) < minPanelVsBody {
 		for t := 0.06; t <= 0.40; t += 0.02 {
-			if x := Mix(p.Primary.Background, p.Primary.Foreground, t); contrastIdx(bg, c(x)) >= minPanelVsBody {
+			if x := Mix(p.Primary.Background, p.Primary.Foreground, t); p.contrast(bg, c(x)) >= minPanelVsBody {
 				panelHex = x
 				break
 			}
 		}
 	}
 	panel := c(panelHex)
-	accent, accent2 := c(r.Accent), c(r.Accent2)
+	accent := c(r.Accent)
 	good, warn, bad := c(r.Good), c(r.Warn), c(r.Error)
 	readonly := c(Mix(p.Primary.Background, r.Error, 0.25))
 
@@ -358,11 +455,11 @@ func VisiData(p *Palette) string {
 	const minDim = 3.0
 	dimOn := func(surface string) int {
 		si := c(surface)
-		if contrastIdx(si, c(r.Dim)) >= minDim {
+		if p.contrast(si, c(r.Dim)) >= minDim {
 			return c(r.Dim)
 		}
 		for t := 0.0; t <= 1.0; t += 0.04 {
-			if i := c(Mix(r.Dim, p.Primary.Foreground, t)); contrastIdx(si, i) >= minDim {
+			if i := c(Mix(r.Dim, p.Primary.Foreground, t)); p.contrast(si, i) >= minDim {
 				return i
 			}
 		}
@@ -404,7 +501,7 @@ func VisiData(p *Palette) string {
 	stepAway := func(base, target string, start, want float64) int {
 		bi := c(base)
 		for t := start; t <= 0.60; t += 0.02 {
-			if i := c(Mix(base, target, t)); contrastIdx(bi, i) >= want {
+			if i := c(Mix(base, target, t)); p.contrast(bi, i) >= want {
 				return i
 			}
 		}
@@ -414,9 +511,9 @@ func VisiData(p *Palette) string {
 	// readable picks whichever candidate reads best on the given background,
 	// preferring the earlier ones when they already clear minText.
 	readable := func(on int, cands ...int) int {
-		best, bestC := cands[0], contrastIdx(cands[0], on)
+		best, bestC := cands[0], p.contrast(cands[0], on)
 		for _, ci := range cands[1:] {
-			if x := contrastIdx(ci, on); x > bestC {
+			if x := p.contrast(ci, on); x > bestC {
 				best, bestC = ci, x
 			}
 			if bestC >= minText {
@@ -432,7 +529,7 @@ func VisiData(p *Palette) string {
 	// Cursor row: the palette's selection background when it is actually
 	// distinguishable, otherwise a neutral step off the body.
 	rowBg := c(r.Sel)
-	if contrastIdx(body, rowBg) < minRowVsBody {
+	if p.contrast(body, rowBg) < minRowVsBody {
 		rowBg = stepAway(p.Primary.Background, p.Primary.Foreground, 0.16, minRowVsBody)
 	}
 	rowFg := readable(rowBg, fg, selText, bg)
@@ -440,7 +537,7 @@ func VisiData(p *Palette) string {
 	// Cursor column: a quieter tint, since it spans every visible row. Kept
 	// clear of the row colour so the two remain telling apart.
 	col := stepAway(p.Primary.Background, p.Primary.Foreground, 0.08, minColVsBody)
-	if contrastIdx(col, rowBg) < 1.10 {
+	if p.contrast(col, rowBg) < 1.10 {
 		col = stepAway(p.Primary.Background, p.Primary.Foreground, 0.24, minColVsBody)
 	}
 	colFg := readable(col, fg, bg)
@@ -448,10 +545,10 @@ func VisiData(p *Palette) string {
 	// Cursor cell: the one place that says exactly where you are, so it uses
 	// the accent outright rather than a tint of it.
 	cellBg := c(r.Accent)
-	if contrastIdx(cellBg, rowBg) < minCellVsRow || contrastIdx(cellBg, body) < minCellVsRow {
+	if p.contrast(cellBg, rowBg) < minCellVsRow || p.contrast(cellBg, body) < minCellVsRow {
 		cellBg = c(r.Accent2)
 	}
-	if contrastIdx(cellBg, rowBg) < minCellVsRow {
+	if p.contrast(cellBg, rowBg) < minCellVsRow {
 		cellBg = stepAway(p.Primary.Background, p.Primary.Foreground, 0.45, minCellVsRow)
 	}
 	cellFg := readable(cellBg, bg, fg)
@@ -464,7 +561,7 @@ func VisiData(p *Palette) string {
 	onCursor := func(base string) int {
 		i := c(base)
 		ok := func(x int) bool {
-			return contrastIdx(x, body) >= minOnCursor && contrastIdx(x, rowBg) >= minOnCursor
+			return p.contrast(x, body) >= minOnCursor && p.contrast(x, rowBg) >= minOnCursor
 		}
 		if ok(i) {
 			return i
@@ -488,9 +585,21 @@ func VisiData(p *Palette) string {
 	const minSepVsRow = 1.5
 	sep := c(r.Line)
 	sepOK := func(x int) bool {
-		return contrastIdx(x, body) >= minSepVsBody && contrastIdx(x, rowBg) >= minSepVsRow
+		return p.contrast(x, body) >= minSepVsBody && p.contrast(x, rowBg) >= minSepVsRow
 	}
+	// The neutral walk lands on the grayscale ramp on every palette here, so
+	// the grid came out the same colorless gray under every theme. Walk toward
+	// accent2 first to pick up the palette's hue, and only fall back to the
+	// neutral walk when no hued step clears the contrast floors.
 	if !sepOK(sep) {
+		sep = 0
+		for t := 0.20; t <= 0.90 && sep == 0; t += 0.02 {
+			if x := c(Mix(p.Primary.Background, r.Accent2, t)); sepOK(x) && p.hue(x) {
+				sep = x
+			}
+		}
+	}
+	if sep == 0 {
 		for t := 0.12; t <= 0.90; t += 0.02 {
 			if x := c(Mix(p.Primary.Background, p.Primary.Foreground, t)); sepOK(x) {
 				sep = x
@@ -500,13 +609,164 @@ func VisiData(p *Palette) string {
 	}
 	keyCol, selRow := onCursor(r.Accent2), onCursor(r.Accent)
 
+	// A dark background cannot carry hue here: the 256-color cube has almost
+	// no dark saturated cells, so every dark tint quantizes onto the grayscale
+	// ramp or straight to black. That is why VisiData came out near-monochrome
+	// whatever the palette -- the chrome backgrounds simply cannot show it.
+	// The palette has to land in the foregrounds instead, so chrome text is
+	// lifted off plain white toward the accent: enough to read as themed,
+	// still quiet enough that the data is what stands out.
+	tint := func(toward string, t float64) int {
+		if i := c(Mix(p.Primary.Foreground, toward, t)); p.hue(i) && p.contrast(i, panel) >= minText {
+			return i
+		}
+		return fg
+	}
+	chrome := tint(r.Accent2, 0.35)
+
+	// Accent colors are tuned against the sheet background, not the panel the
+	// menus and popups sit on. On palettes whose panel is a mid-dark gray
+	// (nord, kanagawa-wave) a muted accent2 lands under the legibility floor
+	// there -- the aggregator summary read at 3.9. Lift toward the foreground
+	// until it clears, the same way dimOn does for de-emphasized text.
+	onPanel := func(base string) int {
+		if i := c(base); p.contrast(i, panel) >= minText {
+			return i
+		}
+		for t := 0.0; t <= 1.0; t += 0.04 {
+			if i := c(Mix(base, p.Primary.Foreground, t)); p.contrast(i, panel) >= minText {
+				return i
+			}
+		}
+		return fg
+	}
+	accentPanel, accent2Panel := onPanel(r.Accent), onPanel(r.Accent2)
+
+	// A solid bar -- the active status line, the cell being edited -- paints a
+	// role color across its whole width and writes the sheet background on top
+	// of it. Slot mapping hands these the palette's true color instead of a
+	// cube approximation, and the true color can be darker than the cell that
+	// used to stand in for it: nord's accent2 is #81a1c1 where the cube paint
+	// was #87afaf, which dropped the text on it from 4.6 to 4.23. Lift the bar
+	// toward the foreground until whichever text color reads best on it clears
+	// the floor. On a palette that already clears it this is a no-op and the
+	// exact slot is kept.
+	bar := func(base string) (int, int) {
+		for t := 0.0; t <= 0.60; t += 0.04 {
+			bi := c(Mix(base, p.Primary.Foreground, t))
+			if ti := readable(bi, bg, fg, selText); p.contrast(ti, bi) >= minText {
+				return ti, bi
+			}
+		}
+		bi := c(base)
+		return readable(bi, bg, fg, selText), bi
+	}
+	barFg, barBg := bar(r.Accent2)
+
+	// Column colors, mirroring what nvim already does for the same data.
+	// csvview paints CsvViewCol0..8 and nvim/lua/plugins/csv.lua cycles those
+	// through six syntax groups so no two neighbouring columns share a hue;
+	// VisiData draws every cell in color_default, so the same table that is
+	// colored by column in nvim came out flat gray here. Cycle the palette's
+	// own hues instead. Foregrounds survive the 256-color cube well -- it is
+	// only dark backgrounds the cube cannot represent -- so these keep their
+	// hue. Each one has to read on the sheet and differ from its neighbours.
+	const (
+		minColText  = 4.0 // a column color against the sheet body
+		minColDelta = 20  // one column color against the next
+	)
+	colCycle := func() []int {
+		want := []string{
+			r.Accent, p.Bright.Green, r.Accent2, p.Bright.Magenta,
+			p.Bright.Cyan, p.Normal.Red,
+		}
+		// far enough from every color already in the cycle, not just the one
+		// before it -- the cycle wraps, so col5 sits next to col0 too
+		// compare what the terminal will actually paint: two hexes 20 apart can
+		// still quantize onto the same cube cell (nord's bright blue and bright
+		// cyan both land on 109)
+		clears := func(x string, used []string) bool {
+			xi := c(x)
+			for _, u := range used {
+				if ui := c(u); ui == xi || deltaE(p.PaintedHex(xi), p.PaintedHex(ui)) < minColDelta {
+					return false
+				}
+			}
+			return true
+		}
+		readable := func(x string) bool {
+			return contrastHex(x, p.Primary.Background) >= minColText
+		}
+		var used []string
+		for _, hex := range want {
+			pick := hex
+			if !(readable(pick) && clears(pick, used)) {
+				// walk toward the foreground first, then toward the accent, and
+				// keep the best candidate we saw if nothing fully qualifies
+				best, bestScore := pick, -1.0
+				for _, toward := range []string{p.Primary.Foreground, r.Accent2, r.Warn} {
+					for t := 0.05; t <= 0.75; t += 0.05 {
+						x := Mix(hex, toward, t)
+						if !readable(x) {
+							continue
+						}
+						score := 100.0
+						xi := c(x)
+						for _, u := range used {
+							ui := c(u)
+							d := deltaE(p.PaintedHex(xi), p.PaintedHex(ui))
+							if ui == xi {
+								d = 0
+							}
+							if d < score {
+								score = d
+							}
+						}
+						if score > bestScore {
+							best, bestScore = x, score
+						}
+						if score >= minColDelta {
+							break
+						}
+					}
+					if bestScore >= minColDelta {
+						break
+					}
+				}
+				pick = best
+			}
+			used = append(used, pick)
+		}
+		out := make([]int, 0, len(used))
+		for _, u := range used {
+			out = append(out, c(u))
+		}
+		return out
+	}()
+
 	opts := [][2]string{
-		// sheet body
-		{"color_default", fmt.Sprintf("%d on %d", fg, bg)},
-		{"color_default_hdr", fmt.Sprintf("bold %d on %d", accent, panel)},
-		{"color_bottom_hdr", fmt.Sprintf("underline %d on %d", fg, panel)},
+		// sheet body.
+		//
+		// No background: VisiData calls curses.use_default_colors(), so an
+		// unset background is the terminal's own, which wezterm paints from
+		// this same palette. Naming an index instead would quantize it onto
+		// the 256-color cube, and the cube has no dark tinted cells -- every
+		// theme's background collapsed onto the grayscale ramp (nord's
+		// #2e3440 became #3a3a3a, tokyo-night's #1a1b26 became #1c1c1c), so
+		// the sheet was the same gray under every theme. Leaving it unset
+		// keeps the true color at full fidelity.
+		{"color_default", fmt.Sprintf("%d", fg)},
+		{"color_default_hdr", fmt.Sprintf("bold %d on %d", accentPanel, panel)},
+		// VisiData composites color_bottom_hdr at precedence 5 over the last
+		// line of the column header, and the header is one line unless a
+		// column name wraps -- so this option, not color_default_hdr, decides
+		// what the column names look like (sheets.py drawColHdr). It has to
+		// carry the accent and the panel background itself: color_default_hdr
+		// above never reaches the header at all, which is why every theme
+		// except the one this was tuned on drew plain white column names.
+		{"color_bottom_hdr", fmt.Sprintf("bold %d on %d", accentPanel, panel)},
 		{"color_current_hdr", fmt.Sprintf("bold %d on %d", bg, accent)},
-		{"color_column_sep", fmt.Sprintf("%d on %d", sep, bg)},
+		{"color_column_sep", fmt.Sprintf("%d", sep)},
 		{"color_key_col", fmt.Sprintf("%d", keyCol)},
 		{"color_hidden_col", fmt.Sprintf("%d", hiddenCol)},
 		{"color_current_row", fmt.Sprintf("%d on %d", rowFg, rowBg)},
@@ -515,31 +775,35 @@ func VisiData(p *Palette) string {
 		{"color_selected_row", fmt.Sprintf("%d", selRow)},
 		{"color_readonly", fmt.Sprintf("on %d", readonly)},
 		// menu bar and helpbox
-		{"color_menu", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_menu", fmt.Sprintf("%d on %d", chrome, panel)},
 		{"color_menu_active", fmt.Sprintf("bold %d on %d", bg, accent)},
 		{"color_menu_spec", fmt.Sprintf("%d on %d", good, panel)},
-		{"color_menu_help", fmt.Sprintf("italic %d on %d", fg, panel)},
+		{"color_menu_help", fmt.Sprintf("italic %d on %d", dimPanel, panel)},
 		// status bars, sidebar, command palette
-		{"color_status", fmt.Sprintf("%d on %d", fg, panel)},
-		{"color_active_status", fmt.Sprintf("bold %d on %d", bg, accent2)},
+		// color_status and color_longname_status are inert in VisiData 3.4 --
+		// nothing in its draw path reads them, the status bars come from
+		// color_active_status / color_inactive_status / color_top_status. Kept
+		// so older VisiData still gets a themed status line.
+		{"color_status", fmt.Sprintf("%d on %d", chrome, panel)},
+		{"color_active_status", fmt.Sprintf("bold %d on %d", barFg, barBg)},
 		{"color_inactive_status", fmt.Sprintf("%d on %d", dimPanel, panel)},
-		{"color_top_status", fmt.Sprintf("underline %d on %d", fg, panel)},
+		{"color_top_status", fmt.Sprintf("underline %d on %d", chrome, panel)},
 		{"color_highlight_status", fmt.Sprintf("%d on %d", bg, good)},
 		{"color_status_replay", fmt.Sprintf("%d", good)},
 		{"color_longname_status", fmt.Sprintf("%d on %d", dimPanel, panel)},
 		{"color_longname_guide", fmt.Sprintf("%d on %d", dimPanel, panel)},
-		{"color_guide_unwritten", fmt.Sprintf("%d on %d", dimBody, bg)},
-		{"color_sidebar", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_guide_unwritten", fmt.Sprintf("%d", dimBody)},
+		{"color_sidebar", fmt.Sprintf("%d on %d", chrome, panel)},
 		{"color_sidebar_title", fmt.Sprintf("bold %d on %d", bg, accent)},
-		{"color_cmdpalette", fmt.Sprintf("%d on %d", fg, panel)},
+		{"color_cmdpalette", fmt.Sprintf("%d on %d", chrome, panel)},
 		{"color_match", fmt.Sprintf("bold %d", accent)},
 		{"color_highlight_search", fmt.Sprintf("bold %d on %d", bg, accent)},
-		{"color_aggregator", fmt.Sprintf("bold %d on %d", accent2, panel)},
+		{"color_aggregator", fmt.Sprintf("bold %d on %d", accent2Panel, panel)},
 		{"color_heading", fmt.Sprintf("bold %d on %d", bg, accent)},
-		{"color_code", fmt.Sprintf("bold %d on %d", accent2, panel)},
-		{"color_keystrokes", fmt.Sprintf("bold %d on %d", accent, panel)},
+		{"color_code", fmt.Sprintf("bold %d on %d", accent2Panel, panel)},
+		{"color_keystrokes", fmt.Sprintf("bold %d on %d", accentPanel, panel)},
 		// editing and pending edits
-		{"color_edit_cell", fmt.Sprintf("%d on %d", bg, accent2)},
+		{"color_edit_cell", fmt.Sprintf("%d on %d", barFg, barBg)},
 		{"color_edit_unfocused", fmt.Sprintf("%d on %d", dimPanel, panel)},
 		{"color_add_pending", fmt.Sprintf("%d", good)},
 		{"color_change_pending", fmt.Sprintf("reverse %d", warn)},
@@ -547,6 +811,13 @@ func VisiData(p *Palette) string {
 		{"color_note_pending", fmt.Sprintf("bold %d", good)},
 		{"color_note_row", fmt.Sprintf("%d", noteRow)},
 		{"color_note_type", fmt.Sprintf("%d", accent)},
+		// column cycle, consumed by the colorizers in .visidatarc
+		{"color_col0", fmt.Sprintf("%d", colCycle[0])},
+		{"color_col1", fmt.Sprintf("%d", colCycle[1])},
+		{"color_col2", fmt.Sprintf("%d", colCycle[2])},
+		{"color_col3", fmt.Sprintf("%d", colCycle[3])},
+		{"color_col4", fmt.Sprintf("%d", colCycle[4])},
+		{"color_col5", fmt.Sprintf("%d", colCycle[5])},
 		// messages and graphs
 		{"color_error", fmt.Sprintf("%d", bad)},
 		{"color_warning", fmt.Sprintf("%d", warn)},

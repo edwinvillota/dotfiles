@@ -3,7 +3,7 @@ themes {
     jellybeans {
         fg "#dedede"
         bg "#121212"
-        black "#929292"
+        black "#2f2f2f"
         red "#e27373"
         green "#94b979"
         yellow "#ffba7b"

@@ -15,6 +15,7 @@ func TestVisiDataCursorReport(t *testing.T) {
 	t.Logf("%-24s %-6s %-22s %-22s %-22s", "theme", "body", "current_row", "current_col", "current_cell")
 	for _, name := range Names() {
 		o := vdOpts(t, name)
+		p := palOf(t, name)
 		var body int
 		if m := bgOf.FindStringSubmatch(o["color_default"]); m != nil {
 			body = atoiTest(m[1])
@@ -24,6 +25,6 @@ func TestVisiDataCursorReport(t *testing.T) {
 		cell, _ := bgIdx(o["color_current_cell"])
 		t.Logf("%-24s %-6d %-22s %-22s %-22s  | row/body %.2f  col/body %.2f  cell/row %.2f",
 			name, body, o["color_current_row"], o["color_current_col"], o["color_current_cell"],
-			contrastIdx(body, row), contrastIdx(body, col), contrastIdx(row, cell))
+			p.contrast(body, row), p.contrast(body, col), p.contrast(row, cell))
 	}
 }

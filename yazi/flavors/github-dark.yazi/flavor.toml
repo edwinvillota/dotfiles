@@ -5,7 +5,7 @@
 # unset (the upstream default) makes previews bleed through dialogs.
 
 [app]
-overall = { bg = "#010409" }
+overall = { bg = "#0d1117" }
 
 [mgr]
 cwd = { fg = "#79c0ff" }
@@ -20,15 +20,15 @@ marker_cut      = { fg = "#ff7b72", bg = "#ff7b72" }
 marker_marked   = { fg = "#79c0ff", bg = "#79c0ff" }
 marker_selected = { fg = "#e3b341", bg = "#e3b341" }
 
-count_copied   = { fg = "#010409", bg = "#56d364" }
-count_cut      = { fg = "#010409", bg = "#ff7b72" }
-count_selected = { fg = "#010409", bg = "#e3b341" }
+count_copied   = { fg = "#0d1117", bg = "#56d364" }
+count_cut      = { fg = "#0d1117", bg = "#ff7b72" }
+count_selected = { fg = "#0d1117", bg = "#e3b341" }
 
 border_symbol = "│"
-border_style  = { fg = "#1c2025" }
+border_style  = { fg = "#272b31" }
 
 [status]
-overall = { bg = "#010409" }
+overall = { bg = "#0d1117" }
 
 perm_sep   = { fg = "#6e7681" }
 perm_type  = { fg = "#56d364" }
@@ -48,12 +48,12 @@ active   = { fg = "#e3b341", bold = true }
 inactive = {}
 
 [which]
-mask            = { bg = "#0f1217" }
+mask            = { bg = "#1a1e24" }
 cand            = { fg = "#56d4dd" }
 rest            = { fg = "#6e7681" }
 desc            = { fg = "#d2a8ff" }
 separator       = "  "
-separator_style = { fg = "#1c2025" }
+separator_style = { fg = "#272b31" }
 
 [tasks]
 border  = { fg = "#79c0ff" }
@@ -66,10 +66,10 @@ title_warn  = { fg = "#d29922" }
 title_error = { fg = "#ff7b72" }
 
 [confirm]
-border  = { fg = "#79c0ff", bg = "#010409" }
-title   = { fg = "#79c0ff", bg = "#010409" }
-body    = { bg = "#010409" }
-list    = { fg = "#56d4dd", bg = "#010409" }
+border  = { fg = "#79c0ff", bg = "#0d1117" }
+title   = { fg = "#79c0ff", bg = "#0d1117" }
+body    = { bg = "#0d1117" }
+list    = { fg = "#56d4dd", bg = "#0d1117" }
 
 [filetype]
 rules = [
@@ -93,4 +93,32 @@ rules = [
   # Fallback
   { url = "*/", fg = "#79c0ff" },
   { url = "*", fg = "#e6edf3" }
+]
+
+# Icon colors.
+#
+# yazi paints the glyph in front of every row from its own [icon] table, which
+# hard-codes hexes -- the generic folder icon is #03a9f4 under every theme, so
+# folders read blue even on a palette whose accent is nothing of the kind.
+# These are yazi's own fallback rules (same glyphs, same order, so the specific
+# cases still win over the generic ones) with the colors taken from the palette.
+# The named entries in its "dirs" table (.git, .config, Downloads, ...) are
+# matched earlier and deliberately left alone: those icons are recognized by
+# their color as much as their shape.
+[icon]
+prepend_conds = [
+  # Special files
+  { if = "orphan", text = "\uf127", fg = "#ff7b72" },
+  { if = "link",   text = "\uf481", fg = "#6e7681" },
+  { if = "block",  text = "\uf0c9", fg = "#d29922" },
+  { if = "char",   text = "\uf1c0", fg = "#d29922" },
+  { if = "fifo",   text = "\uf1d1", fg = "#d29922" },
+  { if = "sock",   text = "\uf1e4", fg = "#d29922" },
+  { if = "sticky", text = "\uf08d", fg = "#d29922" },
+  { if = "dummy",  text = "\uf057", fg = "#ff7b72" },
+  # Fallback
+  { if = "dir & hovered", text = "\ue5fe", fg = "#79c0ff" },
+  { if = "dir",           text = "\ue5ff", fg = "#79c0ff" },
+  { if = "exec",          text = "\uf489", fg = "#56d364" },
+  { if = "!dir",          text = "\uf15b", fg = "#e6edf3" }
 ]

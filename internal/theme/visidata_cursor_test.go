@@ -21,6 +21,27 @@ func vdOpts(t *testing.T, name string) map[string]string {
 	return out
 }
 
+// palOf loads a palette for a test. Every contrast check below goes through
+// it rather than through the index alone: indices 0-15 are the palette's own
+// ANSI slots, so what they paint is knowable only from the palette.
+func palOf(t *testing.T, name string) *Palette {
+	t.Helper()
+	p, err := Load(name)
+	if err != nil {
+		t.Fatalf("%s: %v", name, err)
+	}
+	return p
+}
+
+// bodyOf is the color the sheet body actually shows. color_default carries no
+// background any more -- VisiData inherits the terminal's, which wezterm paints
+// from this same palette -- so the body is the palette background itself, at
+// full fidelity rather than quantized onto the 256-color cube.
+func bodyOf(t *testing.T, name string) string {
+	t.Helper()
+	return palOf(t, name).Primary.Background
+}
+
 // bgIdx pulls the "on N" background out of a VisiData color spec.
 func bgIdx(spec string) (int, bool) {
 	m := regexp.MustCompile(`on (\d+)`).FindStringSubmatch(spec)
@@ -44,10 +65,8 @@ func TestVisiDataCursorIsVisible(t *testing.T) {
 	for _, name := range Names() {
 		t.Run(name, func(t *testing.T) {
 			o := vdOpts(t, name)
-			body, ok := bgIdx(o["color_default"])
-			if !ok {
-				t.Fatalf("color_default has no background: %q", o["color_default"])
-			}
+			p := palOf(t, name)
+			body := p.Primary.Background
 
 			row, ok := bgIdx(o["color_current_row"])
 			if !ok {
@@ -62,13 +81,13 @@ func TestVisiDataCursorIsVisible(t *testing.T) {
 				t.Fatalf("color_current_cell has no background: %q", o["color_current_cell"])
 			}
 
-			if c := contrastIdx(body, row); c < minRowVsBody {
-				t.Errorf("cursor row (%d) vs body (%d): contrast %.2f < %.2f", row, body, c, minRowVsBody)
+			if c := p.contrastOnBody(row); c < minRowVsBody {
+				t.Errorf("cursor row (%d) vs body (%s): contrast %.2f < %.2f", row, body, c, minRowVsBody)
 			}
-			if c := contrastIdx(body, col); c < minColVsBody {
-				t.Errorf("cursor col (%d) vs body (%d): contrast %.2f < %.2f", col, body, c, minColVsBody)
+			if c := p.contrastOnBody(col); c < minColVsBody {
+				t.Errorf("cursor col (%d) vs body (%s): contrast %.2f < %.2f", col, body, c, minColVsBody)
 			}
-			if c := contrastIdx(row, cell); c < minCellVsRow {
+			if c := p.contrast(row, cell); c < minCellVsRow {
 				t.Errorf("cursor cell (%d) vs cursor row (%d): contrast %.2f < %.2f", cell, row, c, minCellVsRow)
 			}
 			if cell == col {
@@ -88,6 +107,7 @@ func TestVisiDataCursorTextIsReadable(t *testing.T) {
 			o := vdOpts(t, name)
 			for _, key := range []string{"color_current_row", "color_current_col", "color_current_cell"} {
 				spec := o[key]
+				p := palOf(t, name)
 				bg, ok := bgIdx(spec)
 				if !ok {
 					t.Fatalf("%s has no background: %q", key, spec)
@@ -98,7 +118,7 @@ func TestVisiDataCursorTextIsReadable(t *testing.T) {
 				}
 				var fg int
 				fmt.Sscanf(m[1], "%d", &fg)
-				if c := contrastIdx(fg, bg); c < minText {
+				if c := p.contrast(fg, bg); c < minText {
 					t.Errorf("%s: text %d on %d has contrast %.2f < %.2f", key, fg, bg, c, minText)
 				}
 			}
@@ -119,21 +139,24 @@ func TestVisiDataDimIsLegible(t *testing.T) {
 	for _, name := range Names() {
 		t.Run(name, func(t *testing.T) {
 			o := vdOpts(t, name)
-			body, _ := bgIdx(o["color_default"])
+			p := palOf(t, name)
+			body := p.Primary.Background
 			for _, key := range dimmed {
 				spec := o[key]
-				bg, ok := bgIdx(spec)
-				if !ok {
-					bg = body // no explicit background: drawn on the sheet body
-				}
 				m := fgRe.FindStringSubmatch(regexp.MustCompile(`\s*on \d+$`).ReplaceAllString(spec, ""))
 				if m == nil {
 					t.Fatalf("%s has no foreground: %q", key, spec)
 				}
 				var fg int
 				fmt.Sscanf(m[1], "%d", &fg)
-				if c := contrastIdx(fg, bg); c < minDim {
-					t.Errorf("%s: %d on %d has contrast %.2f < %.2f", key, fg, bg, c, minDim)
+				// an explicit background is a panel; otherwise it is the sheet
+				// body, which is the terminal's own color
+				if bg, ok := bgIdx(spec); ok {
+					if c := p.contrast(fg, bg); c < minDim {
+						t.Errorf("%s: %d on %d has contrast %.2f < %.2f", key, fg, bg, c, minDim)
+					}
+				} else if c := p.contrastOnBody(fg); c < minDim {
+					t.Errorf("%s: %d on the body (%s) has contrast %.2f < %.2f", key, fg, body, c, minDim)
 				}
 			}
 		})
@@ -152,6 +175,7 @@ func TestVisiDataMarksReadableOnCursorRow(t *testing.T) {
 	for _, name := range Names() {
 		t.Run(name, func(t *testing.T) {
 			o := vdOpts(t, name)
+			p := palOf(t, name)
 			rowBg, ok := bgIdx(o["color_current_row"])
 			if !ok {
 				t.Fatalf("color_current_row has no background: %q", o["color_current_row"])
@@ -163,7 +187,7 @@ func TestVisiDataMarksReadableOnCursorRow(t *testing.T) {
 				}
 				var fg int
 				fmt.Sscanf(m[1], "%d", &fg)
-				if c := contrastIdx(fg, rowBg); c < minOnCursor {
+				if c := p.contrast(fg, rowBg); c < minOnCursor {
 					t.Errorf("%s: %d on cursor row %d has contrast %.2f < %.2f", key, fg, rowBg, c, minOnCursor)
 				}
 			}
@@ -180,22 +204,25 @@ func TestVisiDataColumnSeparatorsVisible(t *testing.T) {
 		minVsBody = 2.2
 		minVsRow  = 1.5
 	)
-	fgRe := regexp.MustCompile(`(\d+)\s+on\s+\d+`)
+	fgRe := regexp.MustCompile(`^\s*(\d+)\s*$`)
 	for _, name := range Names() {
 		t.Run(name, func(t *testing.T) {
 			o := vdOpts(t, name)
-			body, _ := bgIdx(o["color_default"])
+			p := palOf(t, name)
+			body := p.Primary.Background
 			rowBg, _ := bgIdx(o["color_current_row"])
+			// separators carry no background: they are drawn straight onto the
+			// sheet body, which is the terminal's own color
 			m := fgRe.FindStringSubmatch(o["color_column_sep"])
 			if m == nil {
 				t.Fatalf("color_column_sep malformed: %q", o["color_column_sep"])
 			}
 			var sep int
 			fmt.Sscanf(m[1], "%d", &sep)
-			if c := contrastIdx(sep, body); c < minVsBody {
-				t.Errorf("separator %d vs body %d: contrast %.2f < %.2f", sep, body, c, minVsBody)
+			if c := p.contrastOnBody(sep); c < minVsBody {
+				t.Errorf("separator %d vs body %s: contrast %.2f < %.2f", sep, body, c, minVsBody)
 			}
-			if c := contrastIdx(sep, rowBg); c < minVsRow {
+			if c := p.contrast(sep, rowBg); c < minVsRow {
 				t.Errorf("separator %d vs cursor row %d: contrast %.2f < %.2f", sep, rowBg, c, minVsRow)
 			}
 		})
@@ -211,14 +238,15 @@ func TestVisiDataPanelDistinctFromBody(t *testing.T) {
 	for _, name := range Names() {
 		t.Run(name, func(t *testing.T) {
 			o := vdOpts(t, name)
-			body, _ := bgIdx(o["color_default"])
+			p := palOf(t, name)
+			body := p.Primary.Background
 			for _, key := range []string{"color_menu", "color_status", "color_sidebar"} {
 				panel, ok := bgIdx(o[key])
 				if !ok {
 					t.Fatalf("%s has no background: %q", key, o[key])
 				}
-				if c := contrastIdx(body, panel); c < minPanel {
-					t.Errorf("%s: panel %d vs body %d has contrast %.2f < %.2f", key, panel, body, c, minPanel)
+				if c := p.contrastOnBody(panel); c < minPanel {
+					t.Errorf("%s: panel %d vs body %s has contrast %.2f < %.2f", key, panel, body, c, minPanel)
 				}
 			}
 		})

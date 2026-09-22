@@ -82,12 +82,37 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 - The active theme is per-machine state (`state.toml`), never a commit: the
   post-install hook re-applies it after `install`, and `backup` normalizes the
   theme-selecting lines back to ayu-dark before they reach the repo.
+- The nvim picker paints its own file rows, git status letters and match
+  spans rather than asking the colorscheme, and most colorschemes never define
+  those groups. `dotfiles theme` writes the colors into
+  `nvim/lua/config/theme-active.lua` next to the colorscheme name, and
+  `lua/config/highlights.lua` reads them and repaints on every `ColorScheme`
+  event. Derivation lives in `Palette.derivePicker`; a palette may override any
+  single color under `[picker]` (ayu-dark pins the whole set to the values it
+  was hand-tuned with).
 - VisiData is the one tool that cannot take hex: its colors are xterm-256
   indices or the 8 ANSI names, and its stock theme is written as
   `white on black`. Since the terminal remaps ANSI 0-15 to the active palette
   (jellybeans' black is `#929292`), those defaults paint the sheet grey. The
-  generated `~/.visidata/theme.py` (exec'd by `.visidatarc` when present) uses
-  only fixed cube indices 16-255, so it is immune to the remapping.
+  generated `~/.visidata/theme.py` (exec'd by `.visidatarc` when present) never
+  names a slot blindly: `Palette.Paint` gives a role an index in 0-15 only when
+  its hex is *exactly* one of the palette's 16 ANSI colors, so the remapping
+  hands back the color we asked for, and falls back to a fixed cube index
+  (16-255) otherwise. That exactness is what separates it from the stock theme
+  — and it is worth the dependency, because the cube is coarse where it matters
+  most: it has no cell within deltaE 5 of most palette accents, so seven of the
+  nine themes used to paint their accent as one of two near-identical golds
+  (indices 179 and 180, error up to deltaE 16.2). Eight of nine now reach the
+  screen exactly, 58 of 63 role/theme pairs overall. The cost is that VisiData
+  is only correct in a terminal carrying this palette — which is already true
+  of the sheet background, since `color_default` is left unset so it inherits
+  the terminal's own. Two further traps: the cube has almost no dark saturated
+  cells, so any chrome mixed from the background toward the foreground
+  quantizes onto the grayscale ramp and
+  the whole app reads monochrome — the palette has to land in the foregrounds
+  instead. And VisiData composites `color_bottom_hdr` at precedence 5 over a
+  one-line column header, so `color_default_hdr` never reaches the screen;
+  the header accent has to go on `color_bottom_hdr`.
 - Reload behavior: wezterm recolors live; zellij needs a session restart; nvim
   and the other TUIs use the new theme on their next start; open a new shell
   (or source `~/.config/zsh/00-theme.zsh`) for fzf/bat.
