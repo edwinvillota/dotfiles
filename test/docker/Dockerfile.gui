@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       xvfb x11vnc novnc websockify openbox dbus-x11 \
       libegl1 libgl1 libgl1-mesa-dri libglx-mesa0 \
       fontconfig xz-utils \
+      kitty imagemagick x11-apps xdotool \
+      file ffmpeg poppler-utils chafa \
  && rm -rf /var/lib/apt/lists/* \
  && useradd -m -s /bin/zsh tester \
  && echo "tester ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/tester
@@ -17,8 +19,24 @@ RUN mkdir -p /usr/local/share/fonts/meslo && cd /usr/local/share/fonts/meslo \
  && mkdir -p /usr/local/share/fonts/iosevka && cd /usr/local/share/fonts/iosevka \
  && curl -fsSL "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/IosevkaTerm.tar.xz" | tar -xJ \
  && fc-cache -f
-COPY --chown=tester:tester . /home/tester/dotfiles
+# zellij and yazi as static release binaries: both are absent from Ubuntu's
+# repos, and the Linuxbrew fallback the manifest would otherwise use compiles
+# for far too long to sit inside an image build.
 ARG TARGETARCH=arm64
+ARG ZELLIJ_VERSION=0.42.2
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      arm64) ZJ=aarch64-unknown-linux-musl; YZ=aarch64-unknown-linux-musl ;; \
+      *)     ZJ=x86_64-unknown-linux-musl;  YZ=x86_64-unknown-linux-musl ;; \
+    esac; \
+    curl -fsSL "https://github.com/zellij-org/zellij/releases/download/v${ZELLIJ_VERSION}/zellij-${ZJ}.tar.gz" \
+      | tar -xz -C /usr/local/bin zellij; \
+    curl -fsSL -o /tmp/yazi.zip "https://github.com/sxyazi/yazi/releases/latest/download/yazi-${YZ}.zip"; \
+    cd /tmp && python3 -c "import zipfile;zipfile.ZipFile('yazi.zip').extractall('.')"; \
+    find /tmp -type f -name 'ya' -o -type f -name 'yazi' | xargs -I{} install -m755 {} /usr/local/bin/; \
+    zellij --version && yazi --version
+
+COPY --chown=tester:tester . /home/tester/dotfiles
 COPY --chown=tester:tester dist/dotfiles-linux-${TARGETARCH} /usr/local/bin/dotfiles
 USER tester
 WORKDIR /home/tester/dotfiles

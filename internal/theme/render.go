@@ -30,6 +30,37 @@ func Wezterm(p *Palette) string {
 	return b.String()
 }
 
+// Kitty renders ~/.config/kitty/theme.conf; kitty.conf `include`s it and
+// tolerates its absence, so a machine that never ran `dotfiles theme` still
+// starts. kitty re-reads its config on SIGUSR1 (see Apply's reload notice).
+func Kitty(p *Palette) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s\n# theme: %s (%s)\n\n", genHeader, p.Name, p.Label)
+	fmt.Fprintf(&b, "foreground %s\nbackground %s\n", p.Primary.Foreground, p.Primary.Background)
+	fmt.Fprintf(&b, "cursor %s\ncursor_text_color %s\n", p.Cursor.Cursor, p.Cursor.Text)
+	fmt.Fprintf(&b, "selection_foreground %s\nselection_background %s\n", p.Selection.Text, p.Selection.Background)
+	fmt.Fprintf(&b, "url_color %s\n\n", p.Roles.Accent2)
+
+	// Splits and the tab bar: zellij draws its own, but kitty still paints
+	// these when a pane is opened outside a session, so keep them on-theme.
+	fmt.Fprintf(&b, "active_border_color %s\ninactive_border_color %s\n", p.Roles.Accent, p.Roles.Line)
+	fmt.Fprintf(&b, "tab_bar_background %s\n", p.Roles.Panel)
+	fmt.Fprintf(&b, "active_tab_background %s\nactive_tab_foreground %s\n", p.Roles.Accent, p.Primary.Background)
+	fmt.Fprintf(&b, "inactive_tab_background %s\ninactive_tab_foreground %s\n\n", p.Roles.Panel, p.Roles.Dim)
+
+	// The sixteen ANSI slots, in the order kitty numbers them: 0-7 normal
+	// black..white, 8-15 the brights.
+	for i, c := range []string{
+		p.Normal.Black, p.Normal.Red, p.Normal.Green, p.Normal.Yellow,
+		p.Normal.Blue, p.Normal.Magenta, p.Normal.Cyan, p.Normal.White,
+		p.Bright.Black, p.Bright.Red, p.Bright.Green, p.Bright.Yellow,
+		p.Bright.Blue, p.Bright.Magenta, p.Bright.Cyan, p.Bright.White,
+	} {
+		fmt.Fprintf(&b, "color%d %s\n", i, c)
+	}
+	return b.String()
+}
+
 // minUIAnchor is the contrast the zellij theme's `black` needs from the
 // foreground. minUIPair is what `white` needs from that black -- the looser of
 // the two on purpose: github-dark's pair sits at 4.22, which reads, and
@@ -122,6 +153,10 @@ const zjstatusTemplate = `layout {
                 border_position "top"
 
                 hide_frame_for_single_pane "true"
+                // zjstatus >= 0.25 follows zellij 0.45's new frame styles and
+                // defaults to "titles"; "full" is the frame this layout was
+                // built against. It has to match pane_frame_style in config.kdl.
+                pane_frame_style "full"
                 mode_normal  "#[bg={{sel}}] "
                 mode_tmux    "#[bg={{error}}] "
 

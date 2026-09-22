@@ -1,0 +1,20 @@
+#!/bin/sh
+# Launch zellij when it is installed, from wherever it is installed (cargo,
+# Homebrew on macOS or Linux, system package). On a machine without zellij,
+# fall back to the login shell instead of leaving kitty with no child.
+#
+# This mirrors find_zellij() in wezterm/wezterm.lua. kitty has no config
+# scripting, and it execs `shell` directly without expanding ~ or $VARS, so
+# the search lives here and kitty.conf reaches this file through
+# `/usr/bin/env sh -c` (see kitty.conf).
+for candidate in \
+	"$HOME/.cargo/bin/zellij" \
+	/opt/homebrew/bin/zellij \
+	/home/linuxbrew/.linuxbrew/bin/zellij \
+	/usr/local/bin/zellij \
+	/usr/bin/zellij
+do
+	[ -x "$candidate" ] && exec "$candidate"
+done
+
+exec "${SHELL:-/bin/sh}" -l

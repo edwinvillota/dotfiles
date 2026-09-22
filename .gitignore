@@ -10,3 +10,4 @@ ssh/*
 !ssh/*.pub
 gh/hosts.yml
 lazysql/history
+capture/

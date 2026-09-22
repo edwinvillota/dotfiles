@@ -43,6 +43,11 @@ config.font_size = 16.0
 
 -- Hide the tab bar if only one tab is open
 config.hide_tab_bar_if_only_one_tab = true
+-- Draw the tab bar in terminal cells rather than in the native titlebar.
+-- macOS 26+ renders the titlebar with Liquid Glass, which shows through
+-- wezterm's fancy tab bar and leaves it transparent; the retro bar is
+-- painted from the active color scheme instead, so it follows the theme.
+config.use_fancy_tab_bar = false
 config.max_fps = 240
 config.enable_kitty_graphics = true -- Enables support for the "Kitty graphics protocol", which is a way of displaying images inside the terminal
 

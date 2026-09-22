@@ -414,6 +414,10 @@ default_layout "default"
 //   - false
 // 
 // pane_frames false
+
+// zellij 0.45 added frame styles and defaults to "titles"; this layout was
+// built against the full frame, and zjstatus must be told the same.
+pane_frame_style "full"
  
 // When attaching to an existing session with other users,
 // should the session be mirrored (true)

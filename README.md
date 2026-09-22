@@ -1,6 +1,6 @@
 # dotfiles
 
-Personal configuration for nvim, zsh (oh-my-zsh + powerlevel10k), zellij, wezterm,
+Personal configuration for nvim, zsh (oh-my-zsh + powerlevel10k), zellij, wezterm, kitty,
 yazi, btop, atuin, gh/gh-dash, lazydocker, lazysql, colima, visidata, ssh (public
 parts only) — plus `dotfiles`, a small Go tool that keeps the live config and this
 repo in sync in **both directions**, on macOS and Linux, with dry-runs, backups and
@@ -24,9 +24,12 @@ Quick reference: [docs/cheatsheet.md](docs/cheatsheet.md).
 
 **Supported platforms:** macOS (Homebrew), Ubuntu/Debian (apt + official .deb
 + Linuxbrew fallback), Arch (pacman + Linuxbrew fallback for AUR-only tools).
-Terminals: wezterm is installed and configured on all three; adding another
-(e.g. ghostty) is one `[unit.*]` + one `[deps.pkg.*]` block — a commented
-template sits in `dotfiles.toml`.
+Terminals: wezterm and kitty are installed and configured on all three, and
+share one theme. kitty is the migration target — wezterm has had no release
+since 2024 and Flathub issued an end-of-life notice in Sep 2026 — but both stay
+installed until the switch is finished. Adding another (e.g. ghostty) is one
+`[unit.*]` + one `[deps.pkg.*]` block — a commented template sits in
+`dotfiles.toml`.
 
 ## Fresh machine
 
@@ -69,7 +72,7 @@ live in `~/.config/dotfiles/state.toml`, never in the repo.
 
 ## Themes
 
-`dotfiles theme` switches one shared theme across wezterm, zellij (theme +
+`dotfiles theme` switches one shared theme across wezterm, kitty, zellij (theme +
 zjstatus status bar), nvim, fzf, bat, yazi, btop, gh-dash, visidata and the
 tool's own TUI (`t` key opens the same picker). Available: ayu dark (default), iceberg,
 jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
@@ -113,7 +116,8 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
   instead. And VisiData composites `color_bottom_hdr` at precedence 5 over a
   one-line column header, so `color_default_hdr` never reaches the screen;
   the header accent has to go on `color_bottom_hdr`.
-- Reload behavior: wezterm recolors live; zellij needs a session restart; nvim
+- Reload behavior: wezterm recolors live; kitty needs `kill -SIGUSR1 $KITTY_PID`
+  (or `ctrl+cmd+,`) — recent kitty also auto-reloads; zellij needs a session restart; nvim
   and the other TUIs use the new theme on their next start; open a new shell
   (or source `~/.config/zsh/00-theme.zsh`) for fzf/bat.
 - Not themed: powerlevel10k (its prompt is its own generated config) and
@@ -123,21 +127,24 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 
 ## Known issues
 
-- **Endless screen blinking in zellij after opening a pane** (`Ctrl+g p n`),
-  persisting even after the pane is closed: triggered by upgrading zellij to
-  0.45.x — the current zjstatus (v0.24.0) fights zellij 0.45 over resizes on
-  every pane-count change (see
-  [dj95/zjstatus#174](https://github.com/dj95/zjstatus/issues/174)), while the
-  older April 2025 zjstatus errors outright on 0.45. It is not a wezterm
-  problem (upgrading wezterm only changes the flicker speed). Known-good
-  combo: **zellij 0.42.2 + zjstatus April 2025 build** (what the repo
-  carries). Note the repo syncs `zellij/plugins/zjstatus.wasm` to the live
-  config, so fix the plugin in the repo, not just live. After changing binary
-  or plugin: clear the plugin cache
+- **Image previews in yazi need zellij >= 0.45 under kitty.** zellij 0.42.x
+  advertises sixel to applications unconditionally; kitty implements no sixel
+  at all, so yazi picks the sixel adapter and the escape stream lands on
+  screen as pages of text. zellij 0.45 implements the kitty graphics protocol
+  and only advertises sixel when the host terminal really supports it, which
+  fixes it. wezterm renders sixel, which is why this never showed there.
+  The manifest now pins `min = "0.45"`. Note a manually installed
+  `~/.cargo/bin/zellij` shadows Homebrew's — check `zellij --version` matches
+  what you expect, since `kitty/zellij-launch` searches cargo first.
+- **zjstatus must be >= 0.25 on zellij >= 0.45** (they are paired: 0.25.0's
+  notes say "zellij >= 0.45.0 required", and it fixes the flickering pane
+  frames that older combinations produced). zellij 0.45 also added frame
+  styles and defaults to `titles`; `pane_frame_style "full"` is set in both
+  `zellij/config.kdl` and the zjstatus block so the frames stay as they were.
+  After changing binary or plugin: clear the plugin cache
   (`~/Library/Caches/org.Zellij-Contributors.Zellij` on macOS,
   `~/.cache/zellij` on Linux) and kill all zellij servers
-  (`pkill -f "zellij --server"`). Also check *which* zellij runs — wezterm
-  prefers `~/.cargo/bin/zellij` over Homebrew's.
+  (`pkill -f "zellij --server"`).
 
 ## TUI keys
 
