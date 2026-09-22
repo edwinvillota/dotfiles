@@ -227,6 +227,13 @@ return {
             end
           end
 
+          local csv = require("util.dbout_csv")
+
+          -- `q` closes one thing at a time: the zoom if there is one, then the
+          -- jump in front of you, and only on the query you started from the
+          -- results window itself -- taking with it every buffer still
+          -- stacked there, which dbout_csv has kept loaded and so cannot be
+          -- left to dadbod to reap.
           local function close_results()
             local zen = zen_win()
             if zen then
@@ -235,7 +242,14 @@ return {
               end)
               return
             end
+            if csv.close_jump() then
+              return
+            end
+            local stacked = csv.stack_bufs()
             pcall(vim.cmd, "close")
+            for _, buf in ipairs(stacked) do
+              pcall(vim.api.nvim_buf_delete, buf, { force = true })
+            end
             pcall(vim.api.nvim_buf_delete, ev.buf, { force = true })
           end
 
@@ -248,18 +262,25 @@ return {
               vim.keymap.set("n", "q", close_results, {
                 buffer = ev.buf,
                 silent = true,
-                desc = "Leave zoom, else quit results",
+                desc = "Leave zoom, else close jump, else quit results",
               })
 
               -- dadbod-ui's cell actions assume psql's aligned output and
               -- break on CSV (g:db_ui_disable_mappings_dbout below turns them
               -- off); these are CSV-aware replacements. Its `omap ic` is set
               -- regardless of that flag, hence overriding it here, after it.
-              local csv = require("util.dbout_csv")
               local function map(mode, lhs, rhs, desc)
                 vim.keymap.set(mode, lhs, rhs, { buffer = ev.buf, silent = true, desc = desc })
               end
               map("n", "gd", csv.foreign_key, "Follow foreign key (either direction)")
+              -- Jumps pile up in this window; these move between them without
+              -- re-running anything. `q` closes the one in front.
+              map("n", "[r", function()
+                csv.jump(-1)
+              end, "Previous result")
+              map("n", "]r", function()
+                csv.jump(1)
+              end, "Next result")
               map({ "o", "x" }, "ic", csv.select_cell, "Cell value")
               -- mini.ai owns `i`/`a` in o/x modes. If `c` comes after
               -- 'timeoutlen', its `i` wins over the mapping above and reads
