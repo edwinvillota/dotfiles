@@ -1,0 +1,34 @@
+#!/bin/sh
+# Start tmux for a new terminal window: a fresh session with the agent / nvim /
+# shell tabs of zellij/layouts/default.kdl, focused on nvim. Like
+# kitty/zellij-launch it finds tmux wherever it is installed and falls back to
+# the login shell when it is missing.
+#
+# TMUX_SOCKET picks a separate tmux server, to try this config next to a
+# running setup without touching it:
+#   TMUX_SOCKET=dotfiles-test kitty --single-instance=no /path/to/tmux/launch
+dir=$(cd "$(dirname "$0")" && pwd)
+
+for candidate in \
+	/opt/homebrew/bin/tmux \
+	/home/linuxbrew/.linuxbrew/bin/tmux \
+	/usr/local/bin/tmux \
+	/usr/bin/tmux
+do
+	[ -x "$candidate" ] && tmux=$candidate && break
+done
+[ -n "$tmux" ] || exec "${SHELL:-/bin/sh}" -l
+
+# tmux is not on PATH yet when kitty starts from the Dock; the float helper
+# and the status line call it by name.
+PATH="$(dirname "$tmux"):$PATH"
+export PATH
+# Opened from a zellij pane, the window would inherit zellij's variables, and
+# tools that check them (yazi, snacks.image) would think they are in zellij.
+unset ZELLIJ ZELLIJ_SESSION_NAME ZELLIJ_PANE_ID
+
+exec "$tmux" -L "${TMUX_SOCKET:-default}" -f "$dir/tmux.conf" \
+	new-session -n agent \; \
+	new-window -d -n nvim \; \
+	new-window -d -n shell \; \
+	select-window -t :nvim

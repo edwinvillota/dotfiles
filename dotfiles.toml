@@ -40,6 +40,10 @@ src = "zellij"
 dest = "~/.config/zellij"
 ignore = ["*.bak*"]
 
+[unit.tmux]
+src = "tmux"
+dest = "~/.config/tmux"
+
 [unit.wezterm]
 src = "wezterm"
 dest = "~/.config/wezterm"
@@ -166,7 +170,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "wezterm", "kitty", "iosevka-term-nerd-font",
+core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "tmux", "wezterm", "kitty", "iosevka-term-nerd-font",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -280,6 +284,11 @@ apt = { skip = true }
 # Below that, yazi picks sixel inside zellij and kitty -- which has no sixel
 # at all -- prints the escape stream as text. zjstatus >= 0.25 requires it too.
 min = "0.45"
+
+[deps.pkg.tmux]
+# tmux.conf needs 3.5+ (extended-keys-format, #{current_file}). No `min`:
+# tmux prints its version with -V, not --version.
+apt = { skip = true, note = "apt ships < 3.5; installed via Homebrew" }
 
 [deps.pkg.zoxide]
 

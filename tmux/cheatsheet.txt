@@ -1,0 +1,39 @@
+  tmux keys  (q closes this)
+
+  ANYWHERE
+    Alt h j k l / arrows   focus pane (h/l cross to the next tab at the edge)
+    Alt n                  new pane
+    Alt f                  show / hide this tab's floating pane
+    Alt + / Alt -          grow / shrink pane
+    Alt i / Alt o          move tab left / right
+    Alt y                  this cheatsheet
+    Ctrl g                 mode menu (esc, enter or Ctrl g to leave)
+
+  Ctrl g, then
+    p  pane      t  tab      r  resize      m  move
+    s  scroll    o  session  Ctrl q  kill session
+
+  PANE  (Ctrl g p)
+    h j k l / arrows  focus       tab  next pane
+    r  split right    d  split down    n  new (auto)
+    x  close          f  fullscreen    w  floating pane
+    c  rename         z  pane frames
+
+  TAB  (Ctrl g t)
+    h l / arrows  previous / next     1-9  go to tab
+    n  new        x  close            r  rename
+    b  pane to new tab   [ ]  pane to new tab left / right
+    s  sync input to all panes        tab  last tab
+
+  RESIZE  (Ctrl g r)
+    h j k l  grow toward a side    H J K L  shrink    + -  both
+
+  MOVE  (Ctrl g m)
+    h j k l  swap with neighbour   n / p  cycle panes
+
+  SCROLL  (Ctrl g s, or the mouse wheel)
+    j k  line      d u  half page     f or /  search    n N  next / previous
+    v  start selection   y  copy      e  scrollback in nvim    q  exit
+
+  SESSION  (Ctrl g o)
+    d  detach     w  list sessions
