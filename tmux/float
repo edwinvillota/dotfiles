@@ -1,0 +1,45 @@
+#!/bin/sh
+# Toggle a centered floating pane, like zellij's Alt+f (ToggleFloatingPanes).
+# Each tab gets its own: the pane lives in a session "float-<session>-<tab>",
+# shown in a tmux popup. Hiding it only detaches the popup, so whatever runs
+# there keeps running.
+#
+# Called by run-shell from tmux.conf:
+#   float <socket> <client> <session> <window-id> <directory> <float-window>
+#       toggle; <float-window> is the session's @float_window, set only on
+#       floating sessions, so it is non-empty when pressed inside the popup
+#   float <socket> --cleanup
+#       drop floating sessions whose tab is gone
+socket=$1
+t() { tmux -S "$socket" "$@"; }
+
+# Kill floating sessions whose tab is gone (tab closed, or its session ended).
+if [ "$2" = --cleanup ]; then
+	windows=$(t list-windows -a -F '#{window_id}')
+	t list-sessions -F '#{session_name} #{@float_window}' | while read -r name window; do
+		[ -n "$window" ] || continue
+		printf '%s\n' "$windows" | grep -qx "$window" || t kill-session -t "=$name"
+	done
+	exit
+fi
+
+client=$2 session=$3 window=$4 dir=$5 inside=$6
+
+# Alt+f pressed inside the popup: hide it.
+if [ -n "$inside" ]; then
+	t detach-client -t "$client"
+	exit
+fi
+
+name="float-$session-${window#@}"
+if ! t has-session -t "=$name" 2>/dev/null; then
+	# One command: a detached session is destroyed at once under the global
+	# destroy-unattached, so the opt-out has to land in the same call.
+	t new-session -d -s "$name" -c "$dir" \; \
+		set -t "$name" destroy-unattached off \; \
+		set -t "$name" status off \; \
+		set -t "$name" @float_window "$window"
+fi
+# env -u TMUX: the popup runs inside tmux, and tmux refuses to attach nested.
+t display-popup -c "$client" -E -w 80% -h 80% -d "$dir" -T " float " \
+	"env -u TMUX tmux -S '$socket' attach -t '=$name'"
