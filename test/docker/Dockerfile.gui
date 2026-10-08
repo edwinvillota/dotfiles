@@ -1,4 +1,4 @@
-# Fresh-machine playground WITH a display: run wezterm (and the whole shell
+# Fresh-machine playground WITH a display: run kitty (and the whole shell
 # stack) inside the container, viewed from your browser via noVNC.
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \

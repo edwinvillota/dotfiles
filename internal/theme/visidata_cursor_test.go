@@ -34,7 +34,7 @@ func palOf(t *testing.T, name string) *Palette {
 }
 
 // bodyOf is the color the sheet body actually shows. color_default carries no
-// background any more -- VisiData inherits the terminal's, which wezterm paints
+// background any more -- VisiData inherits the terminal's, which kitty paints
 // from this same palette -- so the body is the palette background itself, at
 // full fidelity rather than quantized onto the 256-color cube.
 func bodyOf(t *testing.T, name string) string {

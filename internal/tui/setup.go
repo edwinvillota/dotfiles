@@ -72,10 +72,10 @@ func NewSetup(m *manifest.Manifest, st *state.State) *Setup {
 			s.themeIdx = i
 		}
 	}
-	// terminal choice first: wezterm today, ghostty on the roadmap
-	if u, ok := m.Units["wezterm"]; ok {
-		s.feats = append(s.feats, feature{key: "wezterm", label: "wezterm",
-			desc: strings.TrimPrefix(u.Dest.For(m.GOOS), "~/"), on: !st.IsDisabled("wezterm"), header: "terminal"})
+	// terminal choice first: kitty today, ghostty on the roadmap
+	if u, ok := m.Units["kitty"]; ok {
+		s.feats = append(s.feats, feature{key: "kitty", label: "kitty",
+			desc: strings.TrimPrefix(u.Dest.For(m.GOOS), "~/"), on: !st.IsDisabled("kitty"), header: "terminal"})
 	}
 	gh := feature{key: "__ghostty", label: "ghostty", desc: "coming soon", soon: true}
 	if len(s.feats) == 0 {
@@ -84,7 +84,7 @@ func NewSetup(m *manifest.Manifest, st *state.State) *Setup {
 	s.feats = append(s.feats, gh)
 	first := true
 	for _, n := range m.UnitNames() {
-		if n == "wezterm" {
+		if n == "kitty" {
 			continue
 		}
 		u := m.Units[n]

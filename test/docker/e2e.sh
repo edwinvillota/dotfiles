@@ -58,16 +58,16 @@ dotfiles uninstall | tail -1
 check '[ "$(cat "$H/.config/nvim/init.lua")" = "ORIGINAL init" ]' "init.lua restored"
 check '[ "$(cat "$H/.config/nvim/lua/plugins/only-live.lua")" = "ORIGINAL only-live" ]' "pruned file restored"
 check '[ ! -f "$H/.config/nvim/lua/config/lazy.lua" ]' "installed files removed"
-check '[ ! -d "$H/.config/wezterm" ]' "empty dirs removed"
+check '[ ! -d "$H/.config/kitty" ]' "empty dirs removed"
 check 'diff -r "$ORIG/.config" "$H/.config" >/dev/null' ".config identical to pre-install (byte-for-byte)"
 check 'diff "$ORIG/.zshrc" "$H/.zshrc" >/dev/null' ".zshrc identical"
 check '[ "$(python3 -c "import json;print(len(json.load(open(\"$H/.local/state/dotfiles/ledger.json\"))[\"entries\"]))" 2>/dev/null || echo 0)" = 0 ]' "ledger emptied"
 
 step "symlink install + uninstall"
-dotfiles install --yes --symlink --unit wezterm >/dev/null
-check '[ -L "$H/.config/wezterm/wezterm.lua" ]' "wezterm.lua is a symlink"
+dotfiles install --yes --symlink --unit kitty >/dev/null
+check '[ -L "$H/.config/kitty/kitty.conf" ]' "kitty.conf is a symlink"
 dotfiles uninstall >/dev/null
-check '[ ! -e "$H/.config/wezterm" ]' "symlinks removed"
+check '[ ! -e "$H/.config/kitty" ]' "symlinks removed"
 
 step "theme switching (nord ⇄ tokyo-night)"
 dotfiles install --yes --profile personal >/dev/null
@@ -78,7 +78,7 @@ check 'grep -q "theme = \"nord\"" "$H/.config/dotfiles/state.toml"' "active them
 check 'grep -q "theme \"nord\"" "$H/.config/zellij/config.kdl"' "zellij config switched"
 check '[ -f "$H/.config/zellij/themes/nord.kdl" ]' "zellij nord theme file installed"
 check 'grep -q "theme: nord" "$H/.config/zellij/layouts/default.kdl"' "zjstatus layout re-rendered"
-check 'grep -q "#2e3440" "$H/.config/wezterm/theme.lua"' "wezterm theme.lua has the nord palette"
+check 'grep -q "#2e3440" "$H/.config/kitty/theme.conf"' "kitty theme.conf has the nord palette"
 check 'grep -q "\"nord\"" "$H/.config/nvim/lua/config/theme-active.lua"' "nvim colorscheme switched"
 check 'grep -q "BAT_THEME" "$H/.config/zsh/00-theme.zsh" && grep -q "#2e3440" "$H/.config/zsh/00-theme.zsh"' "fzf/bat env written from palette"
 check 'zsh -n "$H/.config/zsh/00-theme.zsh"' "00-theme.zsh parses"
@@ -89,7 +89,7 @@ check '[ -f "$H/.config/yazi/flavors/nord.yazi/flavor.toml" ]' "yazi nord flavor
 check 'grep -q "#2e3440" "$H/.config/gh-dash/config.yml"' "gh-dash colors switched"
 out=$(dotfiles theme nord)
 check 'echo "$out" | grep -q "0 file(s) written"' "re-applying the same theme is a no-op"
-themed_files="$H/.config/wezterm/theme.lua $H/.config/zellij/config.kdl $H/.config/zellij/layouts/default.kdl $H/.config/zsh/00-theme.zsh $H/.config/gh-dash/config.yml"
+themed_files="$H/.config/kitty/theme.conf $H/.config/zellij/config.kdl $H/.config/zellij/layouts/default.kdl $H/.config/zsh/00-theme.zsh $H/.config/gh-dash/config.yml"
 snap=$(cat $themed_files | md5sum)
 dotfiles theme tokyo-night >/dev/null
 check 'grep -q "theme \"tokyo-night\"" "$H/.config/zellij/config.kdl"' "switch to tokyo-night"
@@ -139,7 +139,7 @@ check 'echo "$out" | grep -Eq "^  → fd +apt fd-find"' "fd maps to apt fd-find"
 check 'echo "$out" | grep -Eq "^  → sevenzip +apt 7zip"' "sevenzip maps to apt 7zip"
 check 'echo "$out" | grep -Eq "^  → nvim +brew neovim \(Homebrew will be installed first\)"' "nvim needs Homebrew (apt too old)"
 check 'echo "$out" | grep -Eq "^  ⊘ colima"' "colima marked darwin-only"
-check 'echo "$out" | grep -Eq "^  → wezterm +deb https://github.com/wezterm"' "wezterm installs from official .deb"
+check 'echo "$out" | grep -Eq "^  → kitty +apt kitty"' "kitty installs from apt"
 check 'echo "$out" | grep -Eq "^  → oh-my-zsh +git https://github.com/ohmyzsh"' "oh-my-zsh planned as git clone"
 check 'echo "$out" | grep -q "homebrew prerequisites: sudo apt-get install"' "Homebrew bootstrap planned with apt prereqs"
 check 'echo "$out" | grep -q "nothing installed"' "dry-run installed nothing"

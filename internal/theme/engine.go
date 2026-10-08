@@ -18,7 +18,7 @@ const Default = "ayu-dark"
 
 // Units are the manifest units the theme engine writes into. Installing any
 // of them triggers a theme re-apply (see apply's postInstall hook).
-var Units = []string{"wezterm", "kitty", "nvim", "zsh", "zellij", "yazi", "btop", "gh-dash", "visidata"}
+var Units = []string{"kitty", "nvim", "zsh", "zellij", "yazi", "btop", "gh-dash", "visidata"}
 
 // Result reports what Apply changed and what the user must do to see it.
 type Result struct {
@@ -107,11 +107,6 @@ func Apply(m *manifest.Manifest, name string, led *ledger.Ledger, log io.Writer)
 
 	// Machine-local generated files (each read by a repo config with a
 	// built-in fallback, so a missing file is never fatal for the tool).
-	if d := dest("wezterm"); d != "" {
-		if err := write("wezterm", filepath.Join(d, "theme.lua"), []byte(Wezterm(p)), false); err != nil {
-			return res, err
-		}
-	}
 	if d := dest("kitty"); d != "" {
 		if err := write("kitty", filepath.Join(d, "theme.conf"), []byte(Kitty(p)), false); err != nil {
 			return res, err
@@ -175,7 +170,6 @@ func Apply(m *manifest.Manifest, name string, led *ledger.Ledger, log io.Writer)
 		}
 	}
 	res.Reload = []string{
-		"wezterm: reloads live (watches its config)",
 		"kitty: reloads live (auto_reload_config, on by default); older builds need SIGUSR1",
 		"zellij: restart the session to pick up theme + status bar",
 		"nvim: running instances keep the old colors; new ones use " + p.Label,

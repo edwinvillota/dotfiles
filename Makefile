@@ -32,7 +32,7 @@ try: linux
 	docker build -q -f test/docker/Dockerfile --build-arg TARGETARCH=$(DOCKER_ARCH) -t dotfiles-e2e . >/dev/null
 	docker run --rm -it --entrypoint bash dotfiles-e2e test/docker/try.sh
 
-# Fresh-machine sandbox WITH a display: wezterm runs inside the container,
+# Fresh-machine sandbox WITH a display: kitty runs inside the container,
 # viewed at http://localhost:6080/vnc.html in your browser.
 try-gui: linux
 	docker build --build-arg TARGETARCH=$(DOCKER_ARCH) -f test/docker/Dockerfile.gui -t dotfiles-try-gui .

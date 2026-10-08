@@ -1,6 +1,6 @@
 # dotfiles
 
-Personal configuration for nvim, zsh (oh-my-zsh + powerlevel10k), zellij, wezterm, kitty,
+Personal configuration for nvim, zsh (oh-my-zsh + powerlevel10k), zellij, tmux, kitty,
 yazi, btop, atuin, gh/gh-dash, lazydocker, lazysql, colima, visidata, ssh (public
 parts only) — plus `dotfiles`, a small Go tool that keeps the live config and this
 repo in sync in **both directions**, on macOS and Linux, with dry-runs, backups and
@@ -24,10 +24,9 @@ Quick reference: [docs/cheatsheet.md](docs/cheatsheet.md).
 
 **Supported platforms:** macOS (Homebrew), Ubuntu/Debian (apt + official .deb
 + Linuxbrew fallback), Arch (pacman + Linuxbrew fallback for AUR-only tools).
-Terminals: wezterm and kitty are installed and configured on all three, and
-share one theme. kitty is the migration target — wezterm has had no release
-since 2024 and Flathub issued an end-of-life notice in Sep 2026 — but both stay
-installed until the switch is finished. Adding another (e.g. ghostty) is one
+Terminal: kitty is installed and configured on all three. (wezterm was dropped
+— no release since 2024, and Flathub issued an end-of-life notice in Sep 2026.)
+Adding another (e.g. ghostty) is one
 `[unit.*]` + one `[deps.pkg.*]` block — a commented template sits in
 `dotfiles.toml`.
 
@@ -72,7 +71,7 @@ live in `~/.config/dotfiles/state.toml`, never in the repo.
 
 ## Themes
 
-`dotfiles theme` switches one shared theme across wezterm, kitty, zellij (theme +
+`dotfiles theme` switches one shared theme across kitty, zellij (theme +
 zjstatus status bar), nvim, fzf, bat, yazi, btop, gh-dash, visidata and the
 tool's own TUI (`t` key opens the same picker). Available: ayu dark (default), iceberg,
 jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
@@ -116,8 +115,8 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
   instead. And VisiData composites `color_bottom_hdr` at precedence 5 over a
   one-line column header, so `color_default_hdr` never reaches the screen;
   the header accent has to go on `color_bottom_hdr`.
-- Reload behavior: wezterm recolors live; kitty needs `kill -SIGUSR1 $KITTY_PID`
-  (or `ctrl+cmd+,`) — recent kitty also auto-reloads; zellij needs a session restart; nvim
+- Reload behavior: kitty auto-reloads (older builds need `kill -SIGUSR1 $KITTY_PID`
+  or `ctrl+cmd+,`); zellij needs a session restart; nvim
   and the other TUIs use the new theme on their next start; open a new shell
   (or source `~/.config/zsh/00-theme.zsh`) for fzf/bat.
 - Not themed: powerlevel10k (its prompt is its own generated config) and
@@ -132,7 +131,7 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
   at all, so yazi picks the sixel adapter and the escape stream lands on
   screen as pages of text. zellij 0.45 implements the kitty graphics protocol
   and only advertises sixel when the host terminal really supports it, which
-  fixes it. wezterm renders sixel, which is why this never showed there.
+  fixes it.
   The manifest now pins `min = "0.45"`. Note a manually installed
   `~/.cargo/bin/zellij` shadows Homebrew's — check `zellij --version` matches
   what you expect, since `kitty/zellij-launch` searches cargo first.
@@ -157,10 +156,10 @@ jellybeans, kanagawa wave/dragon, github dark (+ colorblind), nord, tokyo night.
 ```sh
 make unit               # go vet + tests (planner, redactor, deps table, TUI, …)
 make try                # interactive fresh-machine container (rehearse `dotfiles setup`)
-make try-gui            # same but with a display: run wezterm in the container,
+make try-gui            # same but with a display: run kitty in the container,
                         # view it at http://localhost:6080/vnc.html (browser VNC).
                         # Theme check: run `dotfiles theme nord` inside — the
-                        # wezterm on screen must visibly switch colors.
+                        # kitty on screen must visibly switch colors.
 make install-bin        # install the binary to ~/.local/bin
 make test               # full install/uninstall cycle in a throwaway Ubuntu container
 E2E_NET=1 make test     # + real apt installs and git clones
