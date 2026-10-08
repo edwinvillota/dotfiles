@@ -137,7 +137,7 @@ type PkgSpec struct {
 	Dest   string `toml:"dest"`
 	Name   string `toml:"name"`
 	// Deb: per-arch URLs of an official .deb, for apt systems where no
-	// repo package exists (wezterm, ghostty, ...). Keys: amd64, arm64.
+	// repo package exists (e.g. ghostty). Keys: amd64, arm64.
 	Deb map[string]string `toml:"deb"`
 	// Check: shell probe for presence — present when it exits 0; stdout is
 	// parsed for the version when `min` is set. Overrides the bin lookup.

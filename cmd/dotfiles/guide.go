@@ -23,11 +23,11 @@ EVERYDAY COMMANDS
                             ~/.zshrc or an existing secret file; anything it
                             replaces is preserved and restorable.
   dotfiles diff             Show file-by-file differences before deciding.
-  dotfiles theme            Switch the THEME of everything at once: wezterm,
+  dotfiles theme            Switch the THEME of everything at once: kitty,
                             zellij (+ status bar), nvim, fzf/bat, yazi, btop,
                             gh-dash and this TUI. Opens a picker (or pass a
                             name; 't' in the TUI does the same). The choice is
-                            per-machine state, never committed. wezterm
+                            per-machine state, never committed. kitty
                             recolors live; zellij needs a restart; nvim and
                             the other TUIs pick it up on their next start.
                             Not themed: powerlevel10k (own prompt config) and
@@ -43,7 +43,7 @@ FRESH MACHINE
   dotfiles deps             Just the tools. Supported platforms: macOS (brew),
                             Ubuntu (apt + official .deb), Arch (pacman);
                             Linuxbrew is bootstrapped when a tool exists
-                            nowhere else. wezterm included on all three.
+                            nowhere else. kitty included on all three.
   dotfiles uninstall        Undo an install: removes what was placed and
                             restores what was there before, byte for byte.
 

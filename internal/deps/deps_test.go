@@ -55,9 +55,6 @@ func TestResolveLinuxApt(t *testing.T) {
 	if got["colima"].Status != Unsupported {
 		t.Error("colima should be darwin-only")
 	}
-	if w := got["wezterm"]; w.Status != Missing || w.Manager != "deb" {
-		t.Errorf("wezterm on apt should install from the official .deb, got %+v", w)
-	}
 	if got["gdu"].Bin != "gdu" {
 		t.Errorf("gdu bin on linux = %q", got["gdu"].Bin)
 	}
@@ -70,15 +67,15 @@ func TestResolveDarwin(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	t.Setenv("HOME", t.TempDir())
 	got := map[string]Item{}
-	for _, it := range Resolve(m, p, []string{"gdu", "wezterm", "fd", "colima"}) {
+	for _, it := range Resolve(m, p, []string{"gdu", "kitty", "fd", "colima"}) {
 		got[it.Name] = it
 	}
 	if got["gdu"].Bin != "gdu-go" {
 		t.Errorf("gdu bin on darwin = %q, want gdu-go", got["gdu"].Bin)
 	}
-	// WezTerm.app may exist on the host; only assert the install shape when missing
-	if w := got["wezterm"]; w.Status == Missing && (len(w.Cmd) != 4 || w.Cmd[2] != "--cask") {
-		t.Errorf("wezterm should be a cask install: %v", w.Cmd)
+	// kitty.app may exist on the host; only assert the install shape when missing
+	if w := got["kitty"]; w.Status == Missing && (len(w.Cmd) != 4 || w.Cmd[2] != "--cask") {
+		t.Errorf("kitty should be a cask install: %v", w.Cmd)
 	}
 	if got["fd"].Pkg != "fd" || got["colima"].Status != Missing {
 		t.Errorf("unexpected: fd=%+v colima=%+v", got["fd"], got["colima"])
@@ -93,21 +90,27 @@ func TestVersionLess(t *testing.T) {
 
 func TestResolveDebPackage(t *testing.T) {
 	m := load(t)
+	// no real package uses a .deb today; exercise the mechanism with a stand-in
+	m.Deps.Pkg["debtool"] = &manifest.PkgSpec{
+		Bin: manifest.Dest{All: "debtool"},
+		Apt: manifest.PkgRef{Skip: true},
+		Deb: map[string]string{"amd64": "https://example.com/debtool_amd64.deb", "arm64": "https://example.com/debtool_arm64.deb"},
+	}
 	t.Setenv("PATH", t.TempDir())
 	p := Platform{OS: "linux", Arch: "amd64", Distro: "ubuntu", Apt: true, Sudo: true, BrewDir: "/home/linuxbrew/.linuxbrew"}
-	var wez Item
-	for _, it := range Resolve(m, p, []string{"wezterm"}) {
-		wez = it
+	var it0 Item
+	for _, it := range Resolve(m, p, []string{"debtool"}) {
+		it0 = it
 	}
-	if wez.Status != Missing || wez.Manager != "deb" || !strings.Contains(wez.Cmd[2], "apt-get install -y") || !strings.Contains(wez.Cmd[2], "Ubuntu22.04.deb") {
-		t.Errorf("wezterm deb resolve wrong: %+v", wez)
+	if it0.Status != Missing || it0.Manager != "deb" || !strings.Contains(it0.Cmd[2], "apt-get install -y") || !strings.Contains(it0.Cmd[2], "debtool_amd64.deb") {
+		t.Errorf("deb resolve wrong: %+v", it0)
 	}
 	p.Arch = "arm64"
-	for _, it := range Resolve(m, p, []string{"wezterm"}) {
-		wez = it
+	for _, it := range Resolve(m, p, []string{"debtool"}) {
+		it0 = it
 	}
-	if wez.Status != Missing || !strings.Contains(wez.Cmd[2], "arm64.deb") {
-		t.Errorf("arm64 should install the arm64 deb: %+v", wez)
+	if it0.Status != Missing || !strings.Contains(it0.Cmd[2], "arm64.deb") {
+		t.Errorf("arm64 should install the arm64 deb: %+v", it0)
 	}
 }
 
@@ -121,7 +124,7 @@ func TestResolveArchPacman(t *testing.T) {
 		got[it.Name] = it
 	}
 	want := map[string]string{
-		"wezterm": "wezterm", "nvim": "neovim", "zellij": "zellij", "yazi": "yazi",
+		"kitty": "kitty", "nvim": "neovim", "zellij": "zellij", "yazi": "yazi",
 		"gh": "github-cli", "sevenzip": "7zip", "powerlevel10k": "zsh-theme-powerlevel10k",
 		"dust": "dust", "atuin": "atuin", "fd": "fd", "gdu": "gdu",
 	}

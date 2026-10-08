@@ -3,8 +3,7 @@
 # Homebrew on macOS or Linux, system package). On a machine without zellij,
 # fall back to the login shell instead of leaving kitty with no child.
 #
-# This mirrors find_zellij() in wezterm/wezterm.lua. kitty has no config
-# scripting, and it execs `shell` directly without expanding ~ or $VARS, so
+# kitty has no config scripting, and it execs `shell` directly without expanding ~ or $VARS, so
 # the search lives here and kitty.conf reaches this file through
 # `/usr/bin/env sh -c` (see kitty.conf).
 for candidate in \

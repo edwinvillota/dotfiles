@@ -875,7 +875,7 @@ func (md *Model) themePickerText() string {
 		}
 		sb.WriteString(cur + mark + line + "\n")
 	}
-	sb.WriteString("\n" + sDim.Render("wezterm reloads live; zellij needs a restart; nvim: new instances") + "\n")
+	sb.WriteString("\n" + sDim.Render("kitty reloads live; zellij needs a restart; nvim: new instances") + "\n")
 	sb.WriteString(sDim.Render("j/k choose · Enter apply · Esc cancel"))
 	return sb.String()
 }

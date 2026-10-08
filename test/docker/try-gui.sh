@@ -14,9 +14,9 @@ cat <<'MSG'
 │  (click Connect — you'll see an empty desktop)                     │
 │                                                                    │
 │  In THIS shell, walk through a real install:                       │
-│    dotfiles setup            profile → tools (incl. wezterm .deb)  │
-│    wezterm &                 opens in the browser window, with     │
-│                              your wezterm.lua, MesloLGS NF, zsh,   │
+│    dotfiles setup            profile → tools → configs             │
+│    kitty &                   opens in the browser window, with     │
+│                              your kitty.conf, Iosevka NF, zsh,     │
 │                              p10k, zellij — test everything there  │
 │                                                                    │
 │  Notes: amd64 emulation on Apple Silicon → not fast; Homebrew      │

@@ -456,8 +456,8 @@ func Xterm256(hex string) int {
 }
 
 // ansiSlots is the palette's 16 terminal color slots, in the order every
-// terminal numbers them: 0-7 normal black..white, 8-15 the brights. Wezterm
-// writes exactly this list, so an index below 16 paints the hex found here.
+// terminal numbers them: 0-7 normal black..white, 8-15 the brights. Kitty's
+// theme.conf writes exactly this list, so an index below 16 paints the hex found here.
 func (p *Palette) ansiSlots() [16]string {
 	return [16]string{
 		p.Normal.Black, p.Normal.Red, p.Normal.Green, p.Normal.Yellow,

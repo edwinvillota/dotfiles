@@ -39,7 +39,7 @@ Repo: `~/Documents/dev/dotfiles` · binary reads `dotfiles.toml` · full tour: `
 
 ## 3. Themes
 
-One shared palette themes wezterm, zellij (+ zjstatus bar), nvim, fzf, bat,
+One shared palette themes kitty, zellij (+ zjstatus bar), nvim, fzf, bat,
 yazi, btop, gh-dash, visidata and the dotfiles TUI itself.
 
 ```
@@ -55,7 +55,7 @@ Available: `ayu-dark` (default) · `iceberg` · `jellybeans` · `kanagawa-wave` 
 
 | Tool | Pickup |
 | --- | --- |
-| wezterm | **live** (watches `theme.lua`) |
+| kitty | **live** (`auto_reload_config`; older builds: SIGUSR1) |
 | zellij | restart the session |
 | nvim | new instances only |
 | fzf / bat | new shell, or `source ~/.config/zsh/00-theme.zsh` |
@@ -68,7 +68,7 @@ Available: `ayu-dark` (default) · `iceberg` · `jellybeans` · `kanagawa-wave` 
 - Active theme is per-machine state in `~/.config/dotfiles/state.toml`, never
   a commit: `install` re-applies it (post-install hook), `backup` normalizes
   theme lines back to ayu-dark before they reach the repo.
-- Machine-local generated files (ignored by sync): `wezterm/theme.lua`,
+- Machine-local generated files (ignored by sync): `kitty/theme.conf`,
   `nvim/lua/config/theme-active.lua` (colorscheme name **plus** the Snacks
   picker colors, read by `lua/config/highlights.lua`), `zsh/00-theme.zsh`.
 - Committed generated assets: `zellij/themes/`, `btop/themes/`,
@@ -90,7 +90,7 @@ Available: `ayu-dark` (default) · `iceberg` · `jellybeans` · `kanagawa-wave` 
 make unit        # go vet + tests (includes theme renderer drift check)
 make test        # Docker e2e (~72 checks, incl. theme round-trip)
 make try         # throwaway Ubuntu container — rehearse `dotfiles setup`
-make try-gui     # same with wezterm on http://localhost:6080/vnc.html
+make try-gui     # same with kitty on http://localhost:6080/vnc.html
                  # theme check: `dotfiles theme nord` must visibly recolor it
 ```
 
