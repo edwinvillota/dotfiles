@@ -114,14 +114,15 @@ local function paint_tags()
   end
 end
 
--- Atlas PR diff lines.
+-- Diff lines.
 --
--- Atlas links its line groups to DiffAdd/DiffChange/DiffDelete and paints
--- whole lines with them. Some themes (Jellybeans, Nord) give those groups only
--- a foreground, so every added line -- an entire new file -- turns one green
--- and the syntax colors disappear. Give Atlas a background tint and no
--- foreground instead: the theme's own diff background when it has one,
--- otherwise its diff color blended into Normal's background.
+-- Atlas (PR review), diffview and :diffthis paint whole lines with
+-- DiffAdd/DiffChange/DiffDelete/DiffText. Some themes (Jellybeans, Nord) give
+-- those groups only a foreground (Iceberg, GitHub add one on top of the
+-- background), so every added line -- an entire new file in an Atlas review --
+-- turns one color and the syntax colors disappear. Drop the foreground: keep
+-- the theme's background when it has one, otherwise blend the diff color into
+-- Normal's background. Themes with background-only diff groups are untouched.
 local function blend(a, b, alpha)
   local function ch(v, shift)
     return bit.band(bit.rshift(v, shift), 0xff)
@@ -132,20 +133,17 @@ local function blend(a, b, alpha)
   return string.format("#%02x%02x%02x", mix(16), mix(8), mix(0))
 end
 
-local function paint_atlas_diff()
+local function paint_diff()
   local base = vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
-  for atlas, diff in pairs({
-    AtlasDiffAddLine = "DiffAdd",
-    AtlasDiffChangeLine = "DiffChange",
-    AtlasDiffRemoveLine = "DiffDelete",
-  }) do
-    local h = vim.api.nvim_get_hl(0, { name = diff, link = false })
-    local bg = h.bg and string.format("#%06x", h.bg)
-    if not bg and h.fg and base then
-      bg = blend(h.fg, base, 0.18)
-    end
-    if bg then
-      vim.api.nvim_set_hl(0, atlas, { bg = bg })
+  if not base then
+    return
+  end
+  -- DiffText marks the changed span inside a DiffChange line, so it gets a
+  -- stronger tint to stand out from it.
+  for name, alpha in pairs({ DiffAdd = 0.18, DiffChange = 0.18, DiffDelete = 0.18, DiffText = 0.35 }) do
+    local h = vim.api.nvim_get_hl(0, { name = name, link = false })
+    if h.fg then
+      vim.api.nvim_set_hl(0, name, { bg = h.bg and string.format("#%06x", h.bg) or blend(h.fg, base, alpha) })
     end
   end
 end
@@ -155,7 +153,7 @@ local function paint()
     vim.api.nvim_set_hl(0, name, opts)
   end
   paint_tags()
-  paint_atlas_diff()
+  paint_diff()
 end
 
 -- Loading a colorscheme clears every highlight, so repaint after each one
