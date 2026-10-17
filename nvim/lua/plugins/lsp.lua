@@ -4,14 +4,20 @@ return {
     servers = {
       vtsls = {
         settings = {
+          -- "shortest" uses tsconfig path aliases (@/...) when they beat the
+          -- relative path, and keeps ./ for nearby files.
+          -- "minimal" drops the extension even when the project sets
+          -- allowImportingTsExtensions ("auto" can switch to "./Button.tsx").
           javascript = {
             preferences = {
-              importModuleSpecifier = "relative",
+              importModuleSpecifier = "shortest",
+              importModuleSpecifierEnding = "minimal",
             },
           },
           typescript = {
             preferences = {
-              importModuleSpecifier = "relative",
+              importModuleSpecifier = "shortest",
+              importModuleSpecifierEnding = "minimal",
             },
           },
         },
