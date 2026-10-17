@@ -1,7 +1,7 @@
 # dotfiles
 
 Personal configuration for nvim, zsh (oh-my-zsh + powerlevel10k), zellij, tmux, kitty,
-yazi, btop, atuin, gh/gh-dash, lazydocker, lazysql, colima, visidata, ssh (public
+yazi, btop, atuin, gh/gh-dash, lazydocker, colima, visidata, ssh (public
 parts only) — plus `dotfiles`, a small Go tool that keeps the live config and this
 repo in sync in **both directions**, on macOS and Linux, with dry-runs, backups and
 rollback.

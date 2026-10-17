@@ -1,9 +1,4 @@
-# Launch lazysql against the connections defined in databases.zsh, and plot
-# query results with `chart`.
-#
-#   db              -> pick a connection interactively (fzf)
-#   db dev          -> connect to the first name matching "dev"
-#   db -l           -> list configured connection names
+# Plot query results against the connections defined in databases.zsh.
 #
 #   chart dev 'select day, revenue from sales'   -> plot a query
 #   chart 'select ...'                           -> only one connection defined
@@ -12,11 +7,6 @@
 #
 # Reads the same NVIM_DB_<NAME> variables Neovim uses, so shell and editor
 # never drift apart.
-
-# lazysql shells out to this for "open in external editor" (it execs the binary
-# directly, so it must be a bare command name -- no flags). Scoped to lazysql
-# via SQL_EDITOR so it does not change EDITOR for git and everything else.
-export SQL_EDITOR=nvim
 
 # Connection names, lowercased, from the NVIM_DB_* environment.
 _db_names() {
@@ -49,21 +39,6 @@ _db_url() {
 
   local var="NVIM_DB_${choice:u}"
   print -r -- "${(P)var}"
-}
-
-db() {
-  if [[ "$1" == "-l" || "$1" == "--list" ]]; then
-    _db_names
-    return 0
-  fi
-
-  local url
-  url=$(_db_url "$1") || return 1
-
-  # Prefer the locally patched build (autocomplete fixes) when present.
-  local bin=lazysql
-  [[ -x "$HOME/.local/bin/lazysql-patched" ]] && bin="$HOME/.local/bin/lazysql-patched"
-  "$bin" "$url"
 }
 
 # --- charting ---------------------------------------------------------------

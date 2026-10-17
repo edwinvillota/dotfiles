@@ -1,74 +1,6 @@
--- lazysql (TUI database client) alongside vim-dadbod.
--- dadbod stays for authoring/running queries; these are for browsing,
--- navigating result sets and quick single-cell edits, which dadbod's plain
--- `dbout` buffer cannot do.
---
--- Connections are read from `vim.g.dbs` (the same table vim-dadbod-ui uses),
--- so there is a single source of truth. Define it in lua/config/options.lua:
---
---   vim.g.dbs = {
---     dev  = "postgres://user:pass@localhost:5432/dev",
---     prod = "postgres://user:pass@host:5432/prod",
---   }
---
--- If `vim.g.dbs` is empty you get prompted for a connection string.
-
--- Each client takes the connection URL differently, and lazysql has a local
--- patched build, so resolve both per client instead of assuming `<bin> <url>`.
-local clients = {
-  lazysql = {
-    brew = "lazysql",
-    bin = function()
-      -- Prefer the locally patched build (autocomplete fixes) when present.
-      local patched = vim.fn.expand("~/.local/bin/lazysql-patched")
-      return vim.fn.executable(patched) == 1 and patched or "lazysql"
-    end,
-    args = function(url)
-      return { url }
-    end,
-  },
-}
-
-local function connections()
-  local dbs = vim.g.dbs or {}
-  local list = {}
-  -- vim.g.dbs supports both a map and a list of {name=, url=}
-  if vim.islist(dbs) then
-    for _, e in ipairs(dbs) do
-      table.insert(list, { name = e.name, url = e.url })
-    end
-  else
-    for name, url in pairs(dbs) do
-      table.insert(list, { name = name, url = url })
-    end
-  end
-  table.sort(list, function(a, b)
-    return a.name < b.name
-  end)
-  return list
-end
-
-local function open(name, url)
-  local client = clients[name]
-  local bin = client.bin()
-  if vim.fn.executable(bin) == 0 then
-    vim.notify(name .. " is not installed (brew install " .. client.brew .. ")", vim.log.levels.ERROR)
-    return
-  end
-  local cmd = { bin }
-  vim.list_extend(cmd, client.args(url))
-  Snacks.terminal.open(cmd, {
-    interactive = true,
-    win = {
-      style = "terminal",
-      width = 0.95,
-      height = 0.95,
-      border = "rounded",
-      title = " " .. name .. " ",
-      title_pos = "center",
-    },
-  })
-end
+-- Database helpers around vim-dadbod: the <leader>D group, the DBUI toggle,
+-- and result-set tools (csvview, VisiData) for the `dbout` buffer, which is
+-- plain text and cannot sort, filter or edit on its own.
 
 -- Pipe the current dbout buffer (CSV, per ~/.psqlrc) into VisiData.
 local function visidata(buf)
@@ -89,30 +21,6 @@ local function visidata(buf)
       title_pos = "center",
     },
   })
-end
-
-local function launch(name)
-  return function()
-    local conns = connections()
-    if #conns == 0 then
-      vim.ui.input({ prompt = "Postgres connection string: " }, function(url)
-        if url and url ~= "" then
-          open(name, url)
-        end
-      end)
-      return
-    end
-    vim.ui.select(conns, {
-      prompt = name .. ": select database",
-      format_item = function(item)
-        return item.name
-      end,
-    }, function(choice)
-      if choice then
-        open(name, choice.url)
-      end
-    end)
-  end
 end
 
 return {
@@ -322,11 +230,5 @@ return {
         end,
       })
     end,
-  },
-  {
-    "folke/snacks.nvim",
-    keys = {
-      { "<leader>Dl", launch("lazysql"), desc = "LazySQL (TUI)" },
-    },
   },
 }

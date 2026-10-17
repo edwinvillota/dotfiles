@@ -67,26 +67,10 @@ return {
     end,
   },
 
-  -- Buffers opened from lazysql's "open in external editor" (Ctrl-O) are temp
-  -- files named lazysql-*.sql with no database attached, so
-  -- vim-dadbod-completion has no schema to complete against. lazysql exports
-  -- LAZYSQL_CONNECTION_URL while the editor runs -- adopt it as the buffer's
-  -- dadbod connection so table/column completion works there.
   {
     "kristijanhusak/vim-dadbod-completion",
     optional = true,
     init = function()
-      vim.api.nvim_create_autocmd({ "BufRead", "BufNewFile" }, {
-        pattern = "lazysql-*.sql",
-        group = vim.api.nvim_create_augroup("lazysql_dadbod", { clear = true }),
-        callback = function(args)
-          local url = vim.env.LAZYSQL_CONNECTION_URL
-          if url and url ~= "" then
-            vim.b[args.buf].db = url
-          end
-        end,
-      })
-
       -- The plugin fetches tables/columns once per connection and keeps them
       -- for the whole session, so a table created with :DB is invisible to
       -- completion until :DBCompletionClearCache (or a restart). dadbod fires

@@ -99,11 +99,6 @@ ignore = ["*.bak"]
 src = "lazydocker"
 dest = { darwin = "~/Library/Application Support/lazydocker", linux = "~/.config/lazydocker" }
 
-[unit.lazysql]
-src = "lazysql"
-dest = { darwin = "~/Library/Application Support/lazysql", linux = "~/.config/lazysql" }
-only = ["config.toml", "saved_queries/*"]   # `history` stays local
-
 # Read by interactive psql and, because dadbod does not pass --no-psqlrc, by
 # :DB queries in Neovim as well. See the file for how the two are told apart.
 [unit.psqlrc]
@@ -169,7 +164,7 @@ core = ["git", "curl", "zsh", "nvim", "tree-sitter", "nvm", "node", "oh-my-zsh",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
          "btop", "gdu", "dust", "visidata", "lazydocker", "colima", "docker",
-         "docker-compose", "gh", "gh-dash", "lazysql"]
+         "docker-compose", "gh", "gh-dash"]
 
 [deps.pkg.nvim]
 brew = "neovim"
@@ -310,10 +305,6 @@ apt = { skip = true }
 
 [deps.pkg.lazydocker]
 apt = { skip = true }
-
-[deps.pkg.lazysql]
-apt = { skip = true }
-pacman = { skip = true, note = "AUR; via Homebrew" }
 
 [deps.pkg.colima]
 os = ["darwin"]

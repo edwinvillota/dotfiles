@@ -9,8 +9,7 @@ vim.opt.expandtab = true -- Use spaces instead of tabs
 vim.opt.shiftwidth = 2 -- Size of an indent
 vim.opt.tabstop = 2 -- Number of spaces that a <Tab> counts for
 
--- Database connections for vim-dadbod-ui and the TUI clients
--- (lazysql -- see lua/plugins/db-tui.lua).
+-- Database connections for vim-dadbod-ui.
 --
 -- Credentials never live in this repo: any environment variable named
 -- NVIM_DB_<NAME> is picked up automatically as a connection called <name>.

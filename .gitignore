@@ -9,5 +9,4 @@ ssh/*
 !ssh/config
 !ssh/*.pub
 gh/hosts.yml
-lazysql/history
 capture/
