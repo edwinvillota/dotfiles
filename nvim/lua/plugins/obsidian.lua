@@ -33,7 +33,7 @@ return {
       workspaces = workspaces,
       legacy_commands = false,
       picker = {
-        name = "snacks.pick",
+        name = "snacks.picker",
       },
     }
   end,

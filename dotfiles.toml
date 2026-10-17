@@ -164,7 +164,7 @@ mode = "backup-only"   # user/email differ per machine; seed only if absent
 #   os       restrict to ["darwin"] / ["linux"]
 # ---------------------------------------------------------------------------
 [deps]
-core = ["git", "curl", "zsh", "nvim", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "tmux", "kitty", "iosevka-term-nerd-font",
+core = ["git", "curl", "zsh", "nvim", "tree-sitter", "nvm", "node", "oh-my-zsh", "powerlevel10k", "zellij", "tmux", "kitty", "iosevka-term-nerd-font",
         "fzf", "fd", "ripgrep", "zoxide", "atuin", "carapace", "bat",
         "zsh-autocomplete", "zsh-syntax-highlighting", "zsh-autosuggestions"]
 extra = ["yazi", "ffmpeg", "poppler", "sevenzip", "imagemagick", "chafa",
@@ -176,6 +176,13 @@ brew = "neovim"
 pacman = "neovim"
 min = "0.12"
 apt = { skip = true, note = "apt ships < 0.12; installed via Homebrew" }
+
+# nvim-treesitter builds parsers with the CLI. Since 0.27 Homebrew ships it as
+# its own formula; `tree-sitter` is now only the library neovim links against.
+[deps.pkg.tree-sitter]
+brew = "tree-sitter-cli"
+pacman = "tree-sitter-cli"
+apt = { skip = true, note = "apt ships an old CLI; installed via Homebrew" }
 
 [deps.pkg.nvm]
 kind = "git"
