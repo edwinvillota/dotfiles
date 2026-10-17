@@ -4,7 +4,7 @@
 #
 # Any NVIM_DB_<NAME> variable is picked up automatically by Neovim
 # (lua/config/options.lua) and exposed as a connection named <name> in
-# vim-dadbod-ui and lazysql. Adding a database is one export
+# vim-dadbod-ui and the `chart` shell command. Adding a database is one export
 # here -- no change needed on the Neovim side.
 #
 # Uncomment and fill in. Names are lowercased, so NVIM_DB_DEV -> "dev".

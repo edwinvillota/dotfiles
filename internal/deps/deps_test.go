@@ -42,7 +42,6 @@ func TestResolveLinuxApt(t *testing.T) {
 		"sevenzip":  {Missing, "apt", "7zip"},
 		"poppler":   {Missing, "apt", "poppler-utils"},
 		"docker":    {Missing, "apt", "docker.io"},
-		"lazysql":   {NeedsBrew, "brew", "lazysql"},
 		"oh-my-zsh": {Missing, "git", "https://github.com/ohmyzsh/ohmyzsh.git"},
 		"gh-dash":   {Missing, "gh-extension", "dlvhdr/gh-dash"},
 	}
@@ -138,7 +137,7 @@ func TestResolveArchPacman(t *testing.T) {
 		}
 	}
 	// AUR-only tools fall back to Linuxbrew
-	for _, n := range []string{"zsh-autocomplete", "carapace", "lazysql"} {
+	for _, n := range []string{"zsh-autocomplete", "carapace"} {
 		if got[n].Status != NeedsBrew {
 			t.Errorf("%s on arch should need Homebrew, got %s", n, got[n].Status)
 		}
