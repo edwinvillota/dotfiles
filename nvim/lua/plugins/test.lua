@@ -32,7 +32,14 @@ return {
 
       opts.adapters = vim.tbl_extend("force", opts.adapters or {}, {
         ["neotest-vitest"] = {},
-        ["neotest-jest"] = {},
+        ["neotest-jest"] = {
+          -- Run jest from the test file's package, not nvim's cwd. In monorepos a
+          -- package whose jest config lives in package.json (no jest.config.*) is
+          -- otherwise run from the repo root without it, so ts-jest never applies.
+          cwd = function(file)
+            return vim.fs.root(file, "package.json")
+          end,
+        },
       })
     end,
   },
