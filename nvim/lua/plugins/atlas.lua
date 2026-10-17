@@ -29,6 +29,11 @@ return {
           { name = "This repo", key = "3", layout = "plain", current_repo = true, search = "is:pr sort:updated-desc" },
         },
       },
+      -- The default "auto" hands diffs to diffview when it is installed; keep
+      -- Atlas's own viewer (inline layout, review panel, notes).
+      diff = {
+        open_cmd = "AtlasDiff",
+      },
       repo_config = {
         -- Where Atlas finds local checkouts for diffs and checkout.
         paths = {
