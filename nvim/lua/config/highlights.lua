@@ -114,11 +114,48 @@ local function paint_tags()
   end
 end
 
+-- Atlas PR diff lines.
+--
+-- Atlas links its line groups to DiffAdd/DiffChange/DiffDelete and paints
+-- whole lines with them. Some themes (Jellybeans, Nord) give those groups only
+-- a foreground, so every added line -- an entire new file -- turns one green
+-- and the syntax colors disappear. Give Atlas a background tint and no
+-- foreground instead: the theme's own diff background when it has one,
+-- otherwise its diff color blended into Normal's background.
+local function blend(a, b, alpha)
+  local function ch(v, shift)
+    return bit.band(bit.rshift(v, shift), 0xff)
+  end
+  local mix = function(shift)
+    return math.floor(ch(a, shift) * alpha + ch(b, shift) * (1 - alpha) + 0.5)
+  end
+  return string.format("#%02x%02x%02x", mix(16), mix(8), mix(0))
+end
+
+local function paint_atlas_diff()
+  local base = vim.api.nvim_get_hl(0, { name = "Normal", link = false }).bg
+  for atlas, diff in pairs({
+    AtlasDiffAddLine = "DiffAdd",
+    AtlasDiffChangeLine = "DiffChange",
+    AtlasDiffRemoveLine = "DiffDelete",
+  }) do
+    local h = vim.api.nvim_get_hl(0, { name = diff, link = false })
+    local bg = h.bg and string.format("#%06x", h.bg)
+    if not bg and h.fg and base then
+      bg = blend(h.fg, base, 0.18)
+    end
+    if bg then
+      vim.api.nvim_set_hl(0, atlas, { bg = bg })
+    end
+  end
+end
+
 local function paint()
   for name, opts in pairs(groups) do
     vim.api.nvim_set_hl(0, name, opts)
   end
   paint_tags()
+  paint_atlas_diff()
 end
 
 -- Loading a colorscheme clears every highlight, so repaint after each one
