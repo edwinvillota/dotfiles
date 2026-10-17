@@ -1,6 +1,7 @@
 return {
   "CopilotC-Nvim/CopilotChat.nvim",
   opts = {
+    model = "kimi-k3",
     prompts = {
       GrammarCorrector = {
         prompt = "Correct my grammar",
